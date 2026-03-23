@@ -1,0 +1,14 @@
+appId: com.demo.voicenotes
+---
+- launchApp
+- tapOn: "Sign in with the demo account"
+- tapOn: "Refresh"
+- tapOn: "Create"
+- tapOn: "Sprint recap"
+- inputText: "fail weekly sync"
+- tapOn: "Upload sample"
+- tapOn: "Create note"
+- extendedWaitUntil:
+    visible: "Retry"
+    timeout: 10000
+- tapOn: "Retry"

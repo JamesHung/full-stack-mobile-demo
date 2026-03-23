@@ -1,0 +1,317 @@
+openapi: 3.1.0
+info:
+  title: Voice Notes Summary API
+  version: 0.1.0
+  description: >
+    Contract for the Voice Notes Summary MVP. Supports demo authentication,
+    note creation, audio upload, async processing status, note detail queries,
+    and retry for failed notes.
+servers:
+  - url: http://localhost:8000
+tags:
+  - name: auth
+    description: MVP authentication endpoints.
+  - name: notes
+    description: Voice note creation, upload, query, and retry operations.
+paths:
+  /auth/demo-login:
+    post:
+      tags: [auth]
+      summary: Demo login
+      description: Exchange a demo login request for a bearer token and seeded user profile.
+      operationId: demoLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemoLoginRequest'
+      responses:
+        '200':
+          description: Demo session created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+  /notes:
+    get:
+      tags: [notes]
+      summary: List notes
+      description: Return the authenticated user's notes ordered by most recently updated.
+      operationId: listNotes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Note list response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteListResponse'
+    post:
+      tags: [notes]
+      summary: Create note
+      description: Create a draft voice note record before attaching audio.
+      operationId: createNote
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNoteRequest'
+      responses:
+        '201':
+          description: Draft note created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteDetail'
+  /notes/{noteId}:
+    get:
+      tags: [notes]
+      summary: Get note detail
+      description: Return transcript, summary, tags, status, and failure information for one note.
+      operationId: getNoteDetail
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NoteId'
+      responses:
+        '200':
+          description: Detailed note payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteDetail'
+        '404':
+          description: Note not found for this user.
+  /notes/{noteId}/audio:
+    post:
+      tags: [notes]
+      summary: Upload audio
+      description: Attach an audio file to a note and enqueue background processing.
+      operationId: uploadNoteAudio
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NoteId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                durationSeconds:
+                  type: integer
+                  minimum: 1
+      responses:
+        '202':
+          description: Audio accepted and processing queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadAudioResponse'
+        '400':
+          description: Unsupported or invalid audio file.
+  /notes/{noteId}/retry:
+    post:
+      tags: [notes]
+      summary: Retry note processing
+      description: Create a new processing attempt for a failed note owned by the authenticated user.
+      operationId: retryNote
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NoteId'
+      responses:
+        '202':
+          description: Retry queued successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetryResponse'
+        '409':
+          description: Retry is not allowed for the current note status.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    NoteId:
+      name: noteId
+      in: path
+      required: true
+      description: Unique identifier for a voice note.
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    DemoLoginRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+          description: Demo user email to sign in as.
+    AuthSession:
+      type: object
+      required: [accessToken, tokenType, user]
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          enum: [Bearer]
+        user:
+          $ref: '#/components/schemas/User'
+    User:
+      type: object
+      required: [id, email, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+    CreateNoteRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 120
+          description: Optional note title provided before upload.
+    NoteStatus:
+      type: string
+      enum: [draft, uploaded, processing, completed, failed]
+    NoteListItem:
+      type: object
+      required:
+        - id
+        - title
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        status:
+          $ref: '#/components/schemas/NoteStatus'
+        summaryPreview:
+          type: string
+          nullable: true
+        errorMessage:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    NoteDetail:
+      allOf:
+        - $ref: '#/components/schemas/NoteListItem'
+        - type: object
+          properties:
+            transcript:
+              type: string
+              nullable: true
+            summary:
+              type: string
+              nullable: true
+            tags:
+              type: array
+              items:
+                type: string
+            audio:
+              $ref: '#/components/schemas/AudioAsset'
+            latestJob:
+              $ref: '#/components/schemas/ProcessingJob'
+    AudioAsset:
+      type: object
+      required: [id, fileName, mimeType, fileSizeBytes, uploadedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        mimeType:
+          type: string
+        fileSizeBytes:
+          type: integer
+          minimum: 1
+        durationSeconds:
+          type: integer
+          minimum: 1
+          nullable: true
+        uploadedAt:
+          type: string
+          format: date-time
+    ProcessingJob:
+      type: object
+      required: [id, attempt, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        attempt:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
+        failureReason:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+    NoteListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteListItem'
+    UploadAudioResponse:
+      type: object
+      required: [note, job]
+      properties:
+        note:
+          $ref: '#/components/schemas/NoteDetail'
+        job:
+          $ref: '#/components/schemas/ProcessingJob'
+    RetryResponse:
+      type: object
+      required: [note, job]
+      properties:
+        note:
+          $ref: '#/components/schemas/NoteDetail'
+        job:
+          $ref: '#/components/schemas/ProcessingJob'
