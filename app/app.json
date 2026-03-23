@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Voice Notes Summary",
+    "slug": "voice-notes-summary",
+    "scheme": "voice-notes-summary",
+    "ios": {
+      "bundleIdentifier": "com.demo.voicenotes"
+    },
+    "android": {
+      "package": "com.demo.voicenotes"
+    },
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
