@@ -34,3 +34,13 @@ def test_detail_and_retry_flow(client):
     retry_response = client.post(f"/notes/{note_id}/retry", headers=headers)
     assert retry_response.status_code == 202
     assert retry_response.json()["note"]["status"] == "uploaded"
+    assert retry_response.json()["job"]["attempt"] == 2
+    assert retry_response.json()["job"]["status"] == "queued"
+    assert retry_response.json()["note"]["errorMessage"] is None
+
+    assert process_next_job() is True
+
+    after_retry_response = client.get(f"/notes/{note_id}", headers=headers)
+    assert after_retry_response.status_code == 200
+    assert after_retry_response.json()["status"] == "failed"
+    assert after_retry_response.json()["latestJob"]["attempt"] == 2

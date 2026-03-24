@@ -1,0 +1,8 @@
+appId: com.demo.voicenotes
+env:
+  SMOKE_PLATFORM: ios
+  SMOKE_PLATFORM_LABEL: iOS
+---
+- runFlow:
+    label: "Run iOS smoke journey"
+    file: voice-notes-smoke.yaml

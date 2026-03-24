@@ -43,3 +43,17 @@ export const Failed = {
       }),
     }),
 };
+
+export const PendingAfterRetry = {
+  render: () =>
+    React.createElement(DebugStory, {
+      value: getResultPanelState({
+        id: "note-3",
+        title: "Retry pending",
+        status: "uploaded",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        tags: [],
+      }),
+    }),
+};

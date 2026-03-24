@@ -1,0 +1,8 @@
+appId: com.demo.voicenotes
+env:
+  SMOKE_PLATFORM: android
+  SMOKE_PLATFORM_LABEL: Android
+---
+- runFlow:
+    label: "Run Android smoke journey"
+    file: voice-notes-smoke.yaml
