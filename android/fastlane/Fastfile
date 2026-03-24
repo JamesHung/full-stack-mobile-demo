@@ -83,15 +83,40 @@ platform :android do
       key_password = prompt(text: "Enter key password: ", secure_text: true)
     end
     
+    # Inject release signing config into build.gradle
+    UI.message("🔑 Injecting release signing config...")
+    build_gradle = "../../app/android/app/build.gradle"
+    keystore_abs = File.absolute_path("../../my-release-key.keystore")
+    
+    gradle_content = File.read(build_gradle)
+    gradle_content.gsub!(
+      /signingConfigs \{.*?^        \}/m,
+      <<~SIGNING
+        signingConfigs {
+                debug {
+                    storeFile file('debug.keystore')
+                    storePassword 'android'
+                    keyAlias 'androiddebugkey'
+                    keyPassword 'android'
+                }
+                release {
+                    storeFile file('#{keystore_abs}')
+                    storePassword '#{keystore_password}'
+                    keyAlias '#{key_alias}'
+                    keyPassword '#{key_password}'
+                }
+            }
+      SIGNING
+    )
+    gradle_content.gsub!(
+      /release \{.*?signingConfig signingConfigs\.debug/m,
+      "release {\n            signingConfig signingConfigs.release"
+    )
+    File.write(build_gradle, gradle_content)
+    UI.success("✅ Release signing config injected")
+    
     # Build with Gradle
     UI.message("📦 Running Gradle assembleRelease...")
-    sh_opts = {
-      log: true,
-      error_callback: proc do |result|
-        UI.error("Gradle build failed")
-        raise "Build error"
-      end
-    }
     
     # Run gradle from app directory to ensure correct autolinking resolution
     Dir.chdir("../../app") do
@@ -173,15 +198,46 @@ platform :android do
     # Verify environment variables
     keystore_password = ENV["KEYSTORE_PASSWORD"]
     key_alias = ENV["KEY_ALIAS"]
-    key_password = ENV["KEY_PASSWORD"]
+    key_password = ENV.fetch("KEY_PASSWORD", "")
     
-    unless keystore_password && key_alias && key_password
+    unless keystore_password && key_alias
       UI.error("❌ Missing required environment variables:")
       UI.error("   KEYSTORE_PASSWORD: #{keystore_password ? "✓" : "✗"}")
       UI.error("   KEY_ALIAS: #{key_alias ? "✓" : "✗"}")
-      UI.error("   KEY_PASSWORD: #{key_password ? "✓" : "✗"}")
       exit(1)
     end
+    
+    # Inject release signing config into build.gradle
+    UI.message("🔑 Injecting release signing config...")
+    build_gradle = "../../app/android/app/build.gradle"
+    keystore_abs = File.absolute_path("../../my-release-key.keystore")
+    
+    gradle_content = File.read(build_gradle)
+    gradle_content.gsub!(
+      /signingConfigs \{.*?^        \}/m,
+      <<~SIGNING
+        signingConfigs {
+                debug {
+                    storeFile file('debug.keystore')
+                    storePassword 'android'
+                    keyAlias 'androiddebugkey'
+                    keyPassword 'android'
+                }
+                release {
+                    storeFile file('#{keystore_abs}')
+                    storePassword '#{keystore_password}'
+                    keyAlias '#{key_alias}'
+                    keyPassword '#{key_password}'
+                }
+            }
+      SIGNING
+    )
+    gradle_content.gsub!(
+      /release \{.*?signingConfig signingConfigs\.debug/m,
+      "release {\n            signingConfig signingConfigs.release"
+    )
+    File.write(build_gradle, gradle_content)
+    UI.success("✅ Release signing config injected")
     
     # Build
     UI.message("📦 Running Gradle assembleRelease...")

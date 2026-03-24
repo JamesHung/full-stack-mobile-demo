@@ -27,13 +27,6 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
       
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'
-      
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -47,6 +40,13 @@ jobs:
       - name: Prebuild Android
         working-directory: ./app
         run: pnpm exec expo prebuild --platform android --clean
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
       
       - name: Decode keystore
         env:
