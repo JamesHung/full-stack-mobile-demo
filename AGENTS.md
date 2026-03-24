@@ -88,6 +88,8 @@
 - Python 3.13, uv, Pydantic, python-dotenv, pytest (backend baseline)
 - TypeScript 5.x for Expo mobile app and shared package; Python 3.13 for backend API and worker + Expo-managed React Native, NativeWind, TanStack Query, shared TypeScript contract package, FastAPI, Pydantic v2, `uv`, `python-dotenv`, `pytest` (001-voice-notes-summary)
 - Mobile bearer token in secure storage; backend SQLite for notes/jobs/users; local filesystem-backed audio storage for development; shared contract package for enums/DTOs (001-voice-notes-summary)
+- TypeScript 5.x for app and shared surfaces, Python 3.13 for backend and worker surfaces, POSIX shell for orchestration, YAML for Maestro and GitHub Actions definitions + Expo 52, React Native 0.76, Expo Router 4, NativeWind 4, TanStack Query 5, FastAPI, Pydantic v2, `python-dotenv`, Maestro CLI, GitHub Actions (002-ci-maestro-simulator)
+- In-memory mobile auth session, backend SQLite, backend filesystem audio storage, and per-run smoke artifact directories containing JUnit, Maestro output, and debug logs (002-ci-maestro-simulator)
 
 ## Recent Changes
 - 2026-03-20: Established project constitution baseline around Expo, React Native, TypeScript, Vitest, NativeWind, and TanStack Query
