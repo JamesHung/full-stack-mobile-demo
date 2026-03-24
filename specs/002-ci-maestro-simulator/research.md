@@ -141,3 +141,41 @@
 - Maestro debug output: https://docs.maestro.dev/troubleshooting/debug-output
 - GitHub artifact storage: https://docs.github.com/actions/using-workflows/storing-workflow-data-as-artifacts
 - Clarified spec requirement FR-011a
+
+## Decision 9: Align `newArchEnabled` to `true` across all iOS config files
+
+**Decision**: Set `newArchEnabled` to `"true"` in `app/ios/Podfile.properties.json` to match the `true` already declared in `app/app.json`.
+
+**Rationale**: New Architecture is the default for Expo 52 / React Native 0.76. The mismatch caused ReactCodegen to produce incomplete outputs, specifically missing `ComponentDescriptors.cpp` files. The Podfile reads `Podfile.properties.json` and sets `RCT_NEW_ARCH_ENABLED` accordingly — when the JSON says `"false"`, the native build uses old architecture codegen paths that are incompatible with the new-architecture app binary.
+
+**Alternatives considered**:
+
+- Set both to `false` (old architecture): rejected because the project already uses Expo 52 / RN 0.76 defaults and the spec clarification explicitly chose `true`.
+- Remove `newArchEnabled` from Podfile.properties.json: rejected because `expo prebuild` regenerates this file and the Podfile explicitly reads it.
+
+**Sources**:
+
+- `app/app.json`: `"newArchEnabled": true`
+- `app/ios/Podfile.properties.json`: `"newArchEnabled": "false"` (current, incorrect)
+- `app/ios/Podfile` line 7: `ENV['RCT_NEW_ARCH_ENABLED'] = podfile_properties['newArchEnabled'] == 'true' ? '1' : '0'`
+- Spec clarification session 2026-03-24: "Both set to `true`"
+- `issuelog/2026-03-23-ios-smoke-reactcodegen-missing-componentdescriptors.md`
+
+## Decision 10: Use `macos-latest` with default Xcode and `idb` for iOS CI
+
+**Decision**: The `ios-smoke` CI job runs on `macos-latest` using the default pre-installed Xcode version. Maestro's iOS Simulator interaction requires `idb` (iOS Development Bridge), installed via `brew install idb-companion`.
+
+**Rationale**: Pinning a specific Xcode version adds maintenance overhead and risks breaking when GitHub updates runner images. The spec clarification explicitly chose the default Xcode. `idb` is required because Maestro uses it as the transport layer for iOS Simulator commands — without it, Maestro cannot interact with the simulator on CI (locally, Maestro may fall back to other mechanisms, but CI environments are headless and require explicit `idb` support).
+
+**Alternatives considered**:
+
+- Pin Xcode via `xcode-select`: rejected per spec clarification and TC-019.
+- Use `macos-14` or `macos-15` instead of `macos-latest`: rejected because explicit version pinning adds the same maintenance burden.
+- Skip `idb` and rely on Maestro's built-in iOS support: rejected because Maestro's iOS Simulator interaction on CI requires `idb` as an explicit dependency.
+
+**Sources**:
+
+- GitHub-hosted runners reference: https://docs.github.com/en/actions/reference/github-hosted-runners-reference
+- Maestro iOS platform support: https://docs.maestro.dev/get-started/supported-platform/react-native
+- Spec clarification session 2026-03-24: "Use `macos-latest` with default pre-installed Xcode (do not pin)"
+- Spec clarification session 2026-03-24: "Add `idb` as an explicit CI dependency requirement"

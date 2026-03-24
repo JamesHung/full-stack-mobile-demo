@@ -13,13 +13,29 @@ The failure happens before Maestro starts driving the app, so the blocker is in 
 
 ## Root Cause
 
-The checked-in Expo/RN iOS native project has drifted from the generated ReactCodegen outputs expected by the current dependency graph. `xcodebuild` is compiling the `ReactCodegen` pod target, but the referenced `ComponentDescriptors.cpp` file is not present under `app/ios/build/generated/...`, which indicates stale or incomplete native generated artifacts.
+Two issues caused the iOS build failure:
 
-## Resolution
+1. **`newArchEnabled` mismatch**: `app/app.json` had `newArchEnabled: true` but `app/ios/Podfile.properties.json` had `newArchEnabled: "false"`. This inconsistency caused ReactCodegen to generate incomplete artifacts for the new architecture build.
+2. **Stale native project**: The checked-in `app/ios/` directory had drifted from the dependency graph, leaving `ComponentDescriptors.cpp` files missing or incomplete.
 
-- Short term: treat iOS smoke as a known issue and keep Android smoke as the active required regression path.
-- Next diagnostic step: resync the iOS native project and generated code, then rerun `make maestro-ios-local`.
-- Candidate remediation steps:
-  - regenerate the iOS native project and codegen outputs from a clean state
-  - verify the `react-native-gesture-handler` codegen artifacts are produced in the expected path
-  - rerun the iOS local smoke after the native build succeeds
+A secondary issue was also found:
+3. **CocoaPods too old**: CocoaPods 1.11.3 did not support the `visionos` platform used in `hermes-engine.podspec` (RN 0.76.9). Updated to 1.16.2.
+4. **`adb devices` called on iOS path**: `build_and_install_app()` in `run-local.sh` called `adb devices` unconditionally, even for iOS builds.
+5. **URL open timeout treated as fatal**: `expo run:ios --no-bundler` exits non-zero when the post-install deep link open times out, even though build and install succeeded.
+
+## Resolution (2026-03-24)
+
+### Changes Applied
+
+1. **`app/ios/Podfile.properties.json`**: Set `newArchEnabled` to `"true"` to match `app.json`.
+2. **`npx expo prebuild --clean --platform ios`**: Regenerated the entire iOS native project from clean state with CocoaPods 1.16.2.
+3. **`scripts/maestro/run-local.sh`**: Fixed `build_and_install_app()` to:
+   - Only call `adb devices` for Android platform
+   - Tolerate post-install URL open timeout on iOS when build and install succeeded (checks for "Build Succeeded" and "Installing on" in build log)
+4. **`.github/workflows/mobile-smoke.yml`**: Added `ios-smoke` job with `macos-latest` runner, idb, and iPhone 16 simulator.
+
+### Verification
+
+- `make maestro-ios-local`: **PASSED** (1/1 Flow Passed in 51s)
+- iOS build: 0 errors, 4 warnings
+- All `ComponentDescriptors.cpp` files present in `app/ios/build/generated/`

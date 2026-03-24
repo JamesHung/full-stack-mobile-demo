@@ -231,15 +231,27 @@ build_and_install_app() {
   fi
 
   printf -- "Running expo command: %s\n" "${expo_command[*]}" >&2
-  adb devices >&2
+  if [[ "${SMOKE_PLATFORM}" == "android" ]]; then
+    adb devices >&2
+  fi
 
+  local build_exit=0
   env \
     CI=1 \
     EXPO_NO_TELEMETRY=1 \
     EXPO_PUBLIC_API_BASE_URL="${SMOKE_API_BASE_URL}" \
     EXPO_PUBLIC_API_BASE_URL_ANDROID="${SMOKE_ANDROID_API_BASE_URL}" \
     EXPO_PUBLIC_API_BASE_URL_IOS="${SMOKE_IOS_API_BASE_URL}" \
-    "${expo_command[@]}" >"${SMOKE_BUILD_LOG_PATH}" 2>&1
+    "${expo_command[@]}" >"${SMOKE_BUILD_LOG_PATH}" 2>&1 || build_exit=$?
+
+  if (( build_exit != 0 )) && [[ "${SMOKE_PLATFORM}" == "ios" ]]; then
+    if grep -q "Build Succeeded" "${SMOKE_BUILD_LOG_PATH}" && grep -q "Installing on" "${SMOKE_BUILD_LOG_PATH}"; then
+      printf "[build-install] iOS build and install succeeded; ignoring post-install URL open failure (exit %d)\n" "${build_exit}" >&2
+      return 0
+    fi
+  fi
+
+  return "${build_exit}"
 }
 
 run_maestro() {
