@@ -176,26 +176,26 @@ Task: "Enhance failure classification and service-exit reporting in scripts/maes
 
 ### Group A: Fix iOS Native Build (Priority 1)
 
-- [ ] T033 [US1] Align `newArchEnabled` to `"true"` in `app/ios/Podfile.properties.json` (TC-018)
-- [ ] T034 [US1] Run `npx expo prebuild --clean --platform ios` to regenerate iOS native project with correct codegen (FR-015 step 1-2)
-- [ ] T035 [US1] Run `cd app/ios && pod install` to install pods with new architecture enabled (FR-015 step 3)
-- [ ] T036 [US1] Verify `ComponentDescriptors.cpp` files exist in `app/ios/build/generated/ios/react/renderer/components/` (FR-015 step 4)
-- [ ] T037 [US1] Build iOS app with `pnpm --filter app exec expo run:ios --no-bundler` — must succeed (exit 0) (FR-015 step 5)
-- [ ] T038 [US1] Run full `make maestro-ios-local` and verify Maestro happy-path passes on iOS simulator (FR-015 step 6)
+- [X] T033 [US1] Align `newArchEnabled` to `"true"` in `app/ios/Podfile.properties.json` (TC-018)
+- [X] T034 [US1] Run `npx expo prebuild --clean --platform ios` to regenerate iOS native project with correct codegen (FR-015 step 1-2)
+- [X] T035 [US1] Run `cd app/ios && pod install` to install pods with new architecture enabled (FR-015 step 3)
+- [X] T036 [US1] Verify `ComponentDescriptors.cpp` files exist in `app/ios/build/generated/ios/react/renderer/components/` (FR-015 step 4)
+- [X] T037 [US1] Build iOS app with `pnpm --filter app exec expo run:ios --no-bundler` — must succeed (exit 0) (FR-015 step 5)
+- [X] T038 [US1] Run full `make maestro-ios-local` and verify Maestro happy-path passes on iOS simulator (FR-015 step 6)
 
 ### Group B: Add iOS CI Job (Priority 2)
 
-- [ ] T039 [US2] Add `ios-smoke` job to `.github/workflows/mobile-smoke.yml` with `macos-latest` runner (FR-016, TC-019)
-- [ ] T040 [US2] Configure CI steps: checkout, install pnpm/Node.js 22/Python 3.13, install Maestro CLI + `idb` (TC-019)
-- [ ] T041 [US2] Add iOS simulator boot step targeting "iPhone 16" with default iOS version (TC-019)
-- [ ] T042 [US2] Add iOS build step using `expo run:ios --no-bundler` and Maestro run step (FR-016)
-- [ ] T043 [US2] Add artifact upload for `voice-notes-smoke-ios` evidence (FR-016)
-- [ ] T044 [US2] Validate complete workflow YAML syntax with `actionlint` or equivalent
+- [X] T039 [US2] Add `ios-smoke` job to `.github/workflows/mobile-smoke.yml` with `macos-latest` runner (FR-016, TC-019)
+- [X] T040 [US2] Configure CI steps: checkout, install pnpm/Node.js 22/Python 3.13, install Maestro CLI + `idb` (TC-019)
+- [X] T041 [US2] Add iOS simulator boot step targeting "iPhone 16" with default iOS version (TC-019)
+- [X] T042 [US2] Add iOS build step using `expo run:ios --no-bundler` and Maestro run step (FR-016)
+- [X] T043 [US2] Add artifact upload for `voice-notes-smoke-ios` evidence (FR-016)
+- [X] T044 [US2] Validate complete workflow YAML syntax with `actionlint` or equivalent
 
 ### Group C: Documentation & Regression
 
-- [ ] T045 [US3] Update `issuelog/2026-03-23-ios-smoke-reactcodegen-missing-componentdescriptors.md` with resolution details
-- [ ] T046 [US3] Run full regression suite (lint → test → build) to confirm no regressions
+- [X] T045 [US3] Update `issuelog/2026-03-23-ios-smoke-reactcodegen-missing-componentdescriptors.md` with resolution details
+- [X] T046 [US3] Run full regression suite (lint → test → build) to confirm no regressions
 
 ### Dependency Graph (Phase 7)
 
