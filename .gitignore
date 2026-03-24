@@ -32,3 +32,4 @@ app/ios/
 app/android/
 app/tsconfig.json
 issuelog/ios-sim-current*.png
+*.keystore
