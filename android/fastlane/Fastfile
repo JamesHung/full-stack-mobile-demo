@@ -9,10 +9,11 @@ platform :android do
     
     # Check Android SDK (optional for builds, only needed for emulator testing)
     begin
-      sh("which adb > /dev/null 2>&1 || [ -f /Users/hungming-hung/Library/Android/sdk/platform-tools/adb ]")
+      android_sdk = ENV["ANDROID_HOME"] || ENV["ANDROID_SDK_ROOT"] || File.expand_path("~/Library/Android/sdk")
+      sh("which adb > /dev/null 2>&1 || [ -f '#{android_sdk}/platform-tools/adb' ]")
       UI.success("✅ Android SDK: Found")
     rescue
-      UI.warn("⚠️  Android SDK: Optional (needed only for emulator testing)")
+      UI.important("⚠️  Android SDK: Optional (needed only for emulator testing)")
     end
     
     # Check Gradle (at ../../app/android/gradlew)
@@ -148,7 +149,7 @@ platform :android do
     apksigner = "#{build_tools_dir}/apksigner"
     
     unless File.exist?(apksigner)
-      UI.warn("⚠️ apksigner not found, skipping signature verification")
+      UI.important("⚠️ apksigner not found, skipping signature verification")
     else
       begin
         sh("'#{apksigner}' verify -v '#{apk_abs_path}'")
@@ -272,7 +273,7 @@ platform :android do
         exit(1)
       end
     else
-      UI.warn("⚠️ apksigner not found, skipping signature verification")
+      UI.important("⚠️ apksigner not found, skipping signature verification")
     end
     
     # Report
