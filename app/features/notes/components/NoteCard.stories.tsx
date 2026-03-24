@@ -30,3 +30,7 @@ export const Completed = {
 export const Failed = {
   render: () => React.createElement(DebugStory, { value: { tone: getStatusBadgeTone("failed") } }),
 };
+
+export const Processing = {
+  render: () => React.createElement(DebugStory, { value: { tone: getStatusBadgeTone("processing") } }),
+};

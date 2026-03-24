@@ -1,14 +1,47 @@
 appId: com.demo.voicenotes
 ---
-- launchApp
-- tapOn: "Sign in with the demo account"
-- tapOn: "Refresh"
-- tapOn: "Create"
-- tapOn: "Sprint recap"
-- inputText: "fail weekly sync"
-- tapOn: "Upload sample"
-- tapOn: "Create note"
-- extendedWaitUntil:
-    visible: "Retry"
-    timeout: 10000
-- tapOn: "Retry"
+- runFlow:
+    label: "Launch the app and sign in with the seeded demo user"
+    commands:
+      - launchApp
+      - extendedWaitUntil:
+          visible: "Sign in with the demo account"
+          timeout: 60000
+      - tapOn: "Sign in with the demo account"
+      - extendedWaitUntil:
+          visible: "Your notes"
+          timeout: 40000
+- runFlow:
+    label: "Refresh the authenticated note list"
+    commands:
+      - tapOn: "Refresh"
+      - extendedWaitUntil:
+          visible: "Create"
+          timeout: 10000
+- runFlow:
+    label: "Create a unique failing note with the canonical sample upload"
+    commands:
+      - tapOn: "Create"
+      - extendedWaitUntil:
+          visible: "Create a voice note"
+          timeout: 10000
+      - tapOn: "Sprint recap"
+      - inputText: "${SMOKE_NOTE_TITLE}"
+      - tapOn: "Upload sample"
+      - tapOn: "Create note"
+- runFlow:
+    label: "Verify the failure state is reached before retry"
+    commands:
+      - extendedWaitUntil:
+          visible: "Failure"
+          timeout: 10000
+      - extendedWaitUntil:
+          visible: "Retry"
+          timeout: 10000
+- runFlow:
+    label: "Retry the failed note and confirm it re-enters processing"
+    commands:
+      - tapOn: "Retry"
+      - extendedWaitUntil:
+          visible: "Processing"
+          timeout: 10000

@@ -73,3 +73,29 @@ def test_upload_rejects_invalid_audio(client):
         json={"fileName": "bad.txt", "mimeType": "text/plain", "fileSizeBytes": 12},
     )
     assert response.status_code == 400
+
+
+def test_failed_processing_surfaces_worker_diagnostics(client):
+    headers = login(client)
+    note_id = client.post("/notes", headers=headers, json={"title": "fail smoke fixture"}).json()["id"]
+
+    upload_response = client.post(
+        f"/notes/{note_id}/audio",
+        headers=headers,
+        json={
+            "fileName": "fail.mp3",
+            "mimeType": "audio/mpeg",
+            "fileSizeBytes": 2048,
+            "durationSeconds": 10,
+        },
+    )
+    assert upload_response.status_code == 202
+
+    assert process_next_job() is True
+
+    detail_response = client.get(f"/notes/{note_id}", headers=headers)
+    assert detail_response.status_code == 200
+    payload = detail_response.json()
+    assert payload["status"] == "failed"
+    assert payload["errorMessage"] == "Processing failed. Try a clearer or longer recording."
+    assert payload["latestJob"]["failureReason"] == "synthetic_failure"

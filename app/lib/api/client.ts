@@ -1,3 +1,5 @@
+import { getApiBaseUrl } from "./baseUrl";
+
 export interface ApiClientOptions {
   baseUrl?: string;
   accessToken?: string | null;
@@ -24,7 +26,7 @@ export class ApiClient {
       headers.set("Authorization", `Bearer ${this.options.accessToken}`);
     }
 
-    const response = await fetch(`${this.options.baseUrl ?? "http://localhost:8000"}${path}`, {
+    const response = await fetch(`${this.options.baseUrl ?? getApiBaseUrl()}${path}`, {
       ...init,
       headers,
     });

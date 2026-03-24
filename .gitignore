@@ -5,6 +5,7 @@ storybook-static/
 coverage/
 .expo/
 .turbo/
+.artifacts/
 .venv/
 venv/
 __pycache__/
@@ -28,5 +29,6 @@ chromatic-diagnostics.json
 .vscode/
 .idea/
 app/ios/
+app/android/
 app/tsconfig.json
 issuelog/ios-sim-current*.png

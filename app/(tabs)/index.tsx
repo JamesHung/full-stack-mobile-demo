@@ -96,13 +96,12 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    gap: 12,
   },
   actions: {
     flexDirection: "row",
     gap: 8,
+    flexWrap: "wrap",
   },
   title: {
     fontSize: 28,
