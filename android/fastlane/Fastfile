@@ -7,25 +7,25 @@ platform :android do
   lane :validate_apk_setup do
     UI.message("🔍 Validating APK setup...")
     
-    # Check Android SDK
+    # Check Android SDK (optional for builds, only needed for emulator testing)
     begin
-      sh("which adb > /dev/null 2>&1")
+      sh("which adb > /dev/null 2>&1 || [ -f /Users/hungming-hung/Library/Android/sdk/platform-tools/adb ]")
       UI.success("✅ Android SDK: Found")
     rescue
-      UI.error("❌ Android SDK: NOT FOUND")
-      raise "Android SDK not found. Install via Android Studio."
+      UI.warn("⚠️  Android SDK: Optional (needed only for emulator testing)")
     end
     
-    # Check Gradle
-    if File.exist?("gradlew")
-      UI.success("✅ Gradle: Found (./gradlew)")
+    # Check Gradle (at ../../app/android/gradlew)
+    gradle_path = "../../app/android/gradlew"
+    if File.exist?(gradle_path)
+      UI.success("✅ Gradle: Found (#{gradle_path})")
     else
-      UI.error("❌ Gradle: NOT FOUND")
-      raise "Gradle not found. Verify android/gradlew exists."
+      UI.error("❌ Gradle: NOT FOUND at #{gradle_path}")
+      raise "Gradle not found. Verify app/android/gradlew exists."
     end
     
-    # Check keystore
-    keystore_path = "../my-release-key.keystore"
+    # Check keystore (at ../../my-release-key.keystore)
+    keystore_path = "../../my-release-key.keystore"
     if File.exist?(keystore_path)
       UI.success("✅ Keystore: Found")
     else
@@ -33,11 +33,12 @@ platform :android do
       raise "Keystore not found."
     end
     
-    # Check app.json
-    if File.exist?("../app/app.json")
+    # Check app.json (at ../../app/app.json)
+    app_json_path = "../../app/app.json"
+    if File.exist?(app_json_path)
       UI.success("✅ app.json: Found")
     else
-      UI.error("❌ app.json: NOT FOUND")
+      UI.error("❌ app.json: NOT FOUND at #{app_json_path}")
       raise "app.json not found."
     end
     
@@ -55,7 +56,7 @@ platform :android do
     
     # Read version from app.json
     UI.message("📖 Reading version from app.json...")
-    app_json_path = File.join(Dir.pwd, "..", "app", "app.json")
+    app_json_path = File.join(Dir.pwd, "..", "..", "app", "app.json")
     begin
       require 'json'
       app_config = JSON.parse(File.read(app_json_path))
@@ -92,11 +93,11 @@ platform :android do
       end
     }
     
-    gradle_cmd = "./gradlew clean assembleRelease"
+    gradle_cmd = "../../app/android/gradlew -p ../../app/android clean assembleRelease"
     sh(gradle_cmd)
     
     # Find and rename APK
-    apk_source = "app/build/outputs/apk/release/app-release.apk"
+    apk_source = "../../app/android/app/build/outputs/apk/release/app-release.apk"
     unless File.exist?(apk_source)
       UI.error("APK not found at #{apk_source}")
       raise "Gradle build failed to generate APK"
@@ -107,7 +108,7 @@ platform :android do
     timestamp = Time.now.utc.strftime('%Y%m%dT%H%M%SZ')
     
     # New filename
-    apk_dest = "app/build/outputs/apk/release/app-v#{version}-build#{build_number}-#{timestamp}.apk"
+    apk_dest = "../../app/android/app/build/outputs/apk/release/app-v#{version}-build#{build_number}-#{timestamp}.apk"
     FileUtils.mv(apk_source, apk_dest)
     
     UI.success("✅ APK renamed: #{File.basename(apk_dest)}")
@@ -147,7 +148,7 @@ platform :android do
     
     # Read version
     UI.message("📖 Reading version...")
-    app_json_path = File.join(Dir.pwd, "..", "app", "app.json")
+    app_json_path = File.join(Dir.pwd, "..", "..", "app", "app.json")
     begin
       require 'json'
       app_config = JSON.parse(File.read(app_json_path))
@@ -173,18 +174,19 @@ platform :android do
     
     # Build
     UI.message("📦 Running Gradle assembleRelease...")
-    sh("./gradlew clean assembleRelease") unless system("./gradlew clean assembleRelease")
+    gradle_path = "../../app/android/gradlew"
+    sh("#{gradle_path} -p ../../app/android clean assembleRelease")
     
-    apk_source = "app/build/outputs/apk/release/app-release.apk"
+    apk_source = "../../app/android/app/build/outputs/apk/release/app-release.apk"
     unless File.exist?(apk_source)
-      UI.error("APK not found")
+      UI.error("APK not found at #{apk_source}")
       exit(1)
     end
     
     # Rename
     require 'time'
     timestamp = Time.now.utc.strftime('%Y%m%dT%H%M%SZ')
-    apk_dest = "app/build/outputs/apk/release/app-v#{version}-build#{build_number}-#{timestamp}.apk"
+    apk_dest = "../../app/android/app/build/outputs/apk/release/app-v#{version}-build#{build_number}-#{timestamp}.apk"
     FileUtils.mv(apk_source, apk_dest)
     
     # Verify
