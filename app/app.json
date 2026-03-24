@@ -3,15 +3,18 @@
     "name": "Voice Notes Summary",
     "slug": "voice-notes-summary",
     "scheme": "voice-notes-summary",
+    "version": "1.0.0",
     "ios": {
       "bundleIdentifier": "com.demo.voicenotes"
     },
     "android": {
-      "package": "com.demo.voicenotes"
+      "package": "com.demo.voicenotes",
+      "versionCode": 1
     },
     "newArchEnabled": true,
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": false

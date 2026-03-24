@@ -32,3 +32,13 @@ app/ios/
 app/android/
 app/tsconfig.json
 issuelog/ios-sim-current*.png
+*.keystore
+
+# Android / Fastlane build artifacts
+android/.bundle/
+android/.gradle/
+android/vendor/
+android/make
+android/settings.gradle
+android/.env.local
+android/fastlane/report.xml

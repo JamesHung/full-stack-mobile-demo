@@ -1,0 +1,240 @@
+default_platform(:android)
+
+platform :android do
+  # Lane: validate_apk_setup
+  # Purpose: Check prerequisites before building APK
+  desc "Validate APK build setup"
+  lane :validate_apk_setup do
+    UI.message("🔍 Validating APK setup...")
+    
+    # Check Android SDK (optional for builds, only needed for emulator testing)
+    begin
+      sh("which adb > /dev/null 2>&1 || [ -f /Users/hungming-hung/Library/Android/sdk/platform-tools/adb ]")
+      UI.success("✅ Android SDK: Found")
+    rescue
+      UI.warn("⚠️  Android SDK: Optional (needed only for emulator testing)")
+    end
+    
+    # Check Gradle (at ../../app/android/gradlew)
+    gradle_path = "../../app/android/gradlew"
+    if File.exist?(gradle_path)
+      UI.success("✅ Gradle: Found (#{gradle_path})")
+    else
+      UI.error("❌ Gradle: NOT FOUND at #{gradle_path}")
+      raise "Gradle not found. Verify app/android/gradlew exists."
+    end
+    
+    # Check keystore (at ../../my-release-key.keystore)
+    keystore_path = "../../my-release-key.keystore"
+    if File.exist?(keystore_path)
+      UI.success("✅ Keystore: Found")
+    else
+      UI.error("❌ Keystore: NOT FOUND at #{keystore_path}")
+      raise "Keystore not found."
+    end
+    
+    # Check app.json (at ../../app/app.json)
+    app_json_path = "../../app/app.json"
+    if File.exist?(app_json_path)
+      UI.success("✅ app.json: Found")
+    else
+      UI.error("❌ app.json: NOT FOUND at #{app_json_path}")
+      raise "app.json not found."
+    end
+    
+    UI.success("✅ All checks passed!")
+  end
+  
+  # Lane: build_and_export_apk
+  # Purpose: Build, sign, and export APK (local development)
+  desc "Build and export signed APK (local)"
+  lane :build_and_export_apk do |options|
+    UI.message("🔨 Building APK...")
+    
+    # Validate setup first
+    validate_apk_setup()
+    
+    # Read version from app.json
+    UI.message("📖 Reading version from app.json...")
+    app_json_path = File.join(Dir.pwd, "..", "..", "app", "app.json")
+    begin
+      require 'json'
+      app_config = JSON.parse(File.read(app_json_path))
+      version = app_config["expo"]["version"]
+      build_number = app_config["expo"]["android"]["versionCode"]
+      UI.message("   Version: #{version}")
+      UI.message("   Build Number: #{build_number}")
+    rescue => e
+      UI.error("Failed to read app.json: #{e}")
+      raise "Invalid app.json or missing version info"
+    end
+    
+    # Prompt for credentials (first time) or use env vars
+    keystore_password = ENV["KEYSTORE_PASSWORD"]
+    key_alias = ENV["KEY_ALIAS"] || "my-release-key-alias"
+    key_password = ENV["KEY_PASSWORD"]
+    
+    if keystore_password.nil? || keystore_password.empty?
+      UI.message("🔑 Fastlane Credentials Manager")
+      keystore_password = prompt(text: "Enter keystore password: ", secure_text: true)
+    end
+    
+    if key_password.nil? || key_password.empty?
+      key_password = prompt(text: "Enter key password: ", secure_text: true)
+    end
+    
+    # Build with Gradle
+    UI.message("📦 Running Gradle assembleRelease...")
+    sh_opts = {
+      log: true,
+      error_callback: proc do |result|
+        UI.error("Gradle build failed")
+        raise "Build error"
+      end
+    }
+    
+    # Run gradle from app directory to ensure correct autolinking resolution
+    Dir.chdir("../../app") do
+      sh("android/gradlew -p android clean assembleRelease")
+    end
+    
+    # Find and rename APK
+    apk_source = "../../app/android/app/build/outputs/apk/release/app-release.apk"
+    unless File.exist?(apk_source)
+      UI.error("APK not found at #{apk_source}")
+      raise "Gradle build failed to generate APK"
+    end
+    
+    # Generate timestamp
+    require 'time'
+    timestamp = Time.now.utc.strftime('%Y%m%dT%H%M%SZ')
+    
+    # New filename
+    apk_dest = "../../app/android/app/build/outputs/apk/release/app-v#{version}-build#{build_number}-#{timestamp}.apk"
+    FileUtils.mv(apk_source, apk_dest)
+    
+    UI.success("✅ APK renamed: #{File.basename(apk_dest)}")
+    
+    # Verify signature
+    UI.message("🔐 Verifying APK signature...")
+    apk_abs_path = File.absolute_path(apk_dest)
+    android_sdk = ENV["ANDROID_HOME"] || ENV["ANDROID_SDK_ROOT"] || File.expand_path("~/Library/Android/sdk")
+    build_tools_dir = Dir.glob("#{android_sdk}/build-tools/*").max_by { |d| File.basename(d) }
+    apksigner = "#{build_tools_dir}/apksigner"
+    
+    unless File.exist?(apksigner)
+      UI.warn("⚠️ apksigner not found, skipping signature verification")
+    else
+      begin
+        sh("'#{apksigner}' verify -v '#{apk_abs_path}'")
+        UI.success("✅ APK signature verified")
+      rescue
+        UI.error("Signature verification failed")
+        raise "APK signature invalid"
+      end
+    end
+    
+    # Report success
+    file_size_mb = (File.size(apk_dest) / (1024.0 * 1024.0)).round(1)
+    UI.success("✅ APK built successfully!")
+    UI.message("   Location: #{apk_dest}")
+    UI.message("   Size: #{file_size_mb} MB")
+    
+    # Set lane context using simple keys (SharedValues constants not needed for custom values)
+    Actions.lane_context[:APK_PATH] = File.absolute_path(apk_dest)
+    Actions.lane_context[:VERSION] = version
+    Actions.lane_context[:BUILD_NUMBER] = build_number
+    Actions.lane_context[:FILE_SIZE] = File.size(apk_dest)
+    Actions.lane_context[:TIMESTAMP] = timestamp
+  end
+  
+  # Lane: ci_export_apk
+  # Purpose: Build and export APK (CI/CD environment)
+  desc "Build and export signed APK (CI/CD)"
+  lane :ci_export_apk do |options|
+    UI.message("🔨 Building APK (CI/CD)...")
+    
+    # Validate setup
+    validate_apk_setup()
+    
+    # Read version
+    UI.message("📖 Reading version...")
+    app_json_path = File.join(Dir.pwd, "..", "..", "app", "app.json")
+    begin
+      require 'json'
+      app_config = JSON.parse(File.read(app_json_path))
+      version = app_config["expo"]["version"]
+      build_number = app_config["expo"]["android"]["versionCode"]
+    rescue => e
+      UI.error("Failed to read version: #{e}")
+      exit(1)
+    end
+    
+    # Verify environment variables
+    keystore_password = ENV["KEYSTORE_PASSWORD"]
+    key_alias = ENV["KEY_ALIAS"]
+    key_password = ENV["KEY_PASSWORD"]
+    
+    unless keystore_password && key_alias && key_password
+      UI.error("❌ Missing required environment variables:")
+      UI.error("   KEYSTORE_PASSWORD: #{keystore_password ? "✓" : "✗"}")
+      UI.error("   KEY_ALIAS: #{key_alias ? "✓" : "✗"}")
+      UI.error("   KEY_PASSWORD: #{key_password ? "✓" : "✗"}")
+      exit(1)
+    end
+    
+    # Build
+    UI.message("📦 Running Gradle assembleRelease...")
+    # Run gradle from app directory to ensure correct autolinking resolution
+    Dir.chdir("../../app") do
+      sh("android/gradlew -p android clean assembleRelease")
+    end
+    
+    apk_source = "../../app/android/app/build/outputs/apk/release/app-release.apk"
+    unless File.exist?(apk_source)
+      UI.error("APK not found at #{apk_source}")
+      exit(1)
+    end
+    
+    # Rename
+    require 'time'
+    timestamp = Time.now.utc.strftime('%Y%m%dT%H%M%SZ')
+    apk_dest = "../../app/android/app/build/outputs/apk/release/app-v#{version}-build#{build_number}-#{timestamp}.apk"
+    FileUtils.mv(apk_source, apk_dest)
+    
+    # Verify
+    apk_abs_path = File.absolute_path(apk_dest)
+    android_sdk = ENV["ANDROID_HOME"] || ENV["ANDROID_SDK_ROOT"] || File.expand_path("~/Library/Android/sdk")
+    build_tools_dir = Dir.glob("#{android_sdk}/build-tools/*").max_by { |d| File.basename(d) }
+    apksigner = "#{build_tools_dir}/apksigner"
+    
+    signature_verified = false
+    if File.exist?(apksigner)
+      signature_verified = system("'#{apksigner}' verify -v '#{apk_abs_path}'")
+      unless signature_verified
+        UI.error("Signature verification failed")
+        exit(1)
+      end
+    else
+      UI.warn("⚠️ apksigner not found, skipping signature verification")
+    end
+    
+    # Report
+    file_size_mb = (File.size(apk_dest) / (1024.0 * 1024.0)).round(1)
+    
+    puts({
+      status: "success",
+      apk_path: File.absolute_path(apk_dest),
+      version: version,
+      build_number: build_number,
+      file_size_mb: file_size_mb,
+      timestamp: timestamp,
+      signature_verified: signature_verified
+    }.to_json)
+    
+    # Set context
+    Actions.lane_context[:APK_PATH] = File.absolute_path(apk_dest)
+    Actions.lane_context[:VERSION] = version
+    Actions.lane_context[:BUILD_NUMBER] = build_number
+  end
+end
