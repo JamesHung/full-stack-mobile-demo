@@ -93,8 +93,10 @@ platform :android do
       end
     }
     
-    gradle_cmd = "../../app/android/gradlew -p ../../app/android clean assembleRelease"
-    sh(gradle_cmd)
+    # Run gradle from app directory to ensure correct autolinking resolution
+    Dir.chdir("../../app") do
+      sh("android/gradlew -p android clean assembleRelease")
+    end
     
     # Find and rename APK
     apk_source = "../../app/android/app/build/outputs/apk/release/app-release.apk"
@@ -115,12 +117,21 @@ platform :android do
     
     # Verify signature
     UI.message("🔐 Verifying APK signature...")
-    begin
-      sh("apksigner verify -v #{apk_dest}")
-      UI.success("✅ APK signature verified")
-    rescue
-      UI.error("Signature verification failed")
-      raise "APK signature invalid"
+    apk_abs_path = File.absolute_path(apk_dest)
+    android_sdk = ENV["ANDROID_HOME"] || ENV["ANDROID_SDK_ROOT"] || File.expand_path("~/Library/Android/sdk")
+    build_tools_dir = Dir.glob("#{android_sdk}/build-tools/*").max_by { |d| File.basename(d) }
+    apksigner = "#{build_tools_dir}/apksigner"
+    
+    unless File.exist?(apksigner)
+      UI.warn("⚠️ apksigner not found, skipping signature verification")
+    else
+      begin
+        sh("'#{apksigner}' verify -v '#{apk_abs_path}'")
+        UI.success("✅ APK signature verified")
+      rescue
+        UI.error("Signature verification failed")
+        raise "APK signature invalid"
+      end
     end
     
     # Report success
@@ -129,12 +140,12 @@ platform :android do
     UI.message("   Location: #{apk_dest}")
     UI.message("   Size: #{file_size_mb} MB")
     
-    # Set lane context
-    Actions.lane_context[SharedValues::APK_PATH] = File.absolute_path(apk_dest)
-    Actions.lane_context[SharedValues::VERSION] = version
-    Actions.lane_context[SharedValues::BUILD_NUMBER] = build_number
-    Actions.lane_context[SharedValues::FILE_SIZE] = File.size(apk_dest)
-    Actions.lane_context[SharedValues::TIMESTAMP] = timestamp
+    # Set lane context using simple keys (SharedValues constants not needed for custom values)
+    Actions.lane_context[:APK_PATH] = File.absolute_path(apk_dest)
+    Actions.lane_context[:VERSION] = version
+    Actions.lane_context[:BUILD_NUMBER] = build_number
+    Actions.lane_context[:FILE_SIZE] = File.size(apk_dest)
+    Actions.lane_context[:TIMESTAMP] = timestamp
   end
   
   # Lane: ci_export_apk
@@ -174,8 +185,10 @@ platform :android do
     
     # Build
     UI.message("📦 Running Gradle assembleRelease...")
-    gradle_path = "../../app/android/gradlew"
-    sh("#{gradle_path} -p ../../app/android clean assembleRelease")
+    # Run gradle from app directory to ensure correct autolinking resolution
+    Dir.chdir("../../app") do
+      sh("android/gradlew -p android clean assembleRelease")
+    end
     
     apk_source = "../../app/android/app/build/outputs/apk/release/app-release.apk"
     unless File.exist?(apk_source)
@@ -190,9 +203,20 @@ platform :android do
     FileUtils.mv(apk_source, apk_dest)
     
     # Verify
-    unless system("apksigner verify -v #{apk_dest}")
-      UI.error("Signature verification failed")
-      exit(1)
+    apk_abs_path = File.absolute_path(apk_dest)
+    android_sdk = ENV["ANDROID_HOME"] || ENV["ANDROID_SDK_ROOT"] || File.expand_path("~/Library/Android/sdk")
+    build_tools_dir = Dir.glob("#{android_sdk}/build-tools/*").max_by { |d| File.basename(d) }
+    apksigner = "#{build_tools_dir}/apksigner"
+    
+    signature_verified = false
+    if File.exist?(apksigner)
+      signature_verified = system("'#{apksigner}' verify -v '#{apk_abs_path}'")
+      unless signature_verified
+        UI.error("Signature verification failed")
+        exit(1)
+      end
+    else
+      UI.warn("⚠️ apksigner not found, skipping signature verification")
     end
     
     # Report
@@ -205,12 +229,12 @@ platform :android do
       build_number: build_number,
       file_size_mb: file_size_mb,
       timestamp: timestamp,
-      signature_verified: true
+      signature_verified: signature_verified
     }.to_json)
     
     # Set context
-    Actions.lane_context[SharedValues::APK_PATH] = File.absolute_path(apk_dest)
-    Actions.lane_context[SharedValues::VERSION] = version
-    Actions.lane_context[SharedValues::BUILD_NUMBER] = build_number
+    Actions.lane_context[:APK_PATH] = File.absolute_path(apk_dest)
+    Actions.lane_context[:VERSION] = version
+    Actions.lane_context[:BUILD_NUMBER] = build_number
   end
 end
