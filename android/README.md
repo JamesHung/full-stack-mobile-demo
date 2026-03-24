@@ -17,7 +17,15 @@
 
 ## 本地測試
 
-### 1. 安裝依賴
+### 一鍵建置
+
+```bash
+KEYSTORE_PASSWORD=<密碼> KEY_ALIAS=<alias> KEY_PASSWORD=<key密碼> make android-apk
+```
+
+此指令會自動完成以下所有步驟（等同手動執行步驟 1–5）。
+
+### 手動步驟（僅供參考）
 
 ```bash
 # 在專案根目錄安裝 pnpm 依賴
