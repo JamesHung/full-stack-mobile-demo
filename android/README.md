@@ -6,7 +6,7 @@
 
 | 工具 | 版本 | 說明 |
 |------|------|------|
-| Ruby | 3.2+ | fastlane 執行環境 |
+| Ruby | 2.7+ | fastlane 執行環境（CI 使用 3.1） |
 | Bundler | 最新 | Ruby 套件管理 |
 | Android SDK | 任意 | 含 `build-tools` |
 | Java (JDK) | 17 | Gradle 建置 |
