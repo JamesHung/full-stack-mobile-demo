@@ -1,5 +1,53 @@
 default_platform(:android)
 
+def inject_release_signing(build_gradle_path, keystore_path, store_password, key_alias, key_password)
+  keystore_abs = File.absolute_path(keystore_path)
+  lines = File.readlines(build_gradle_path)
+  result = []
+  
+  in_signing_configs = false
+  signing_depth = 0
+  in_release_build_type = false
+  
+  lines.each do |line|
+    # Track signingConfigs block to insert release config
+    if line =~ /^\s+signingConfigs\s*\{/ && !in_signing_configs
+      in_signing_configs = true
+      signing_depth = 0
+    end
+    
+    if in_signing_configs
+      signing_depth += line.count('{') - line.count('}')
+      # When depth returns to 0, we've reached the closing brace
+      if signing_depth == 0
+        # Insert release config before the closing brace
+        result << "        release {\n"
+        result << "            storeFile file('#{keystore_abs}')\n"
+        result << "            storePassword '#{store_password}'\n"
+        result << "            keyAlias '#{key_alias}'\n"
+        result << "            keyPassword '#{key_password}'\n"
+        result << "        }\n"
+        in_signing_configs = false
+      end
+    end
+    
+    # Track release buildType to replace signingConfig
+    if line =~ /^\s+release\s*\{/ && !in_release_build_type && !in_signing_configs
+      in_release_build_type = true
+    end
+    
+    if in_release_build_type && line.include?("signingConfig signingConfigs.debug")
+      result << line.sub("signingConfigs.debug", "signingConfigs.release")
+      in_release_build_type = false
+      next
+    end
+    
+    result << line
+  end
+  
+  File.write(build_gradle_path, result.join)
+end
+
 platform :android do
   # Lane: validate_apk_setup
   # Purpose: Check prerequisites before building APK
@@ -86,38 +134,20 @@ platform :android do
     
     # Inject release signing config into build.gradle
     UI.message("🔑 Injecting release signing config...")
-    build_gradle = "../../app/android/app/build.gradle"
-    keystore_abs = File.absolute_path("../../my-release-key.keystore")
-    
-    gradle_content = File.read(build_gradle)
-    gradle_content.gsub!(
-      /signingConfigs \{.*?^        \}/m,
-      <<~SIGNING
-        signingConfigs {
-                debug {
-                    storeFile file('debug.keystore')
-                    storePassword 'android'
-                    keyAlias 'androiddebugkey'
-                    keyPassword 'android'
-                }
-                release {
-                    storeFile file('#{keystore_abs}')
-                    storePassword '#{keystore_password}'
-                    keyAlias '#{key_alias}'
-                    keyPassword '#{key_password}'
-                }
-            }
-      SIGNING
-    )
-    gradle_content.gsub!(
-      /release \{.*?signingConfig signingConfigs\.debug/m,
-      "release {\n            signingConfig signingConfigs.release"
-    )
-    File.write(build_gradle, gradle_content)
+    build_gradle_path = File.absolute_path("../../app/android/app/build.gradle")
+    inject_release_signing(build_gradle_path, "../../my-release-key.keystore", keystore_password, key_alias, key_password)
     UI.success("✅ Release signing config injected")
     
     # Build with Gradle
     UI.message("📦 Running Gradle assembleRelease...")
+    
+    # Ensure local.properties has sdk.dir
+    android_sdk = ENV["ANDROID_HOME"] || ENV["ANDROID_SDK_ROOT"] || File.expand_path("~/Library/Android/sdk")
+    local_props = File.absolute_path("../../app/android/local.properties")
+    unless File.exist?(local_props) && File.read(local_props).include?("sdk.dir")
+      File.write(local_props, "sdk.dir=#{android_sdk}\n")
+      UI.message("   Wrote sdk.dir=#{android_sdk} to local.properties")
+    end
     
     # Run gradle from app directory to ensure correct autolinking resolution
     Dir.chdir("../../app") do
@@ -210,38 +240,19 @@ platform :android do
     
     # Inject release signing config into build.gradle
     UI.message("🔑 Injecting release signing config...")
-    build_gradle = "../../app/android/app/build.gradle"
-    keystore_abs = File.absolute_path("../../my-release-key.keystore")
-    
-    gradle_content = File.read(build_gradle)
-    gradle_content.gsub!(
-      /signingConfigs \{.*?^        \}/m,
-      <<~SIGNING
-        signingConfigs {
-                debug {
-                    storeFile file('debug.keystore')
-                    storePassword 'android'
-                    keyAlias 'androiddebugkey'
-                    keyPassword 'android'
-                }
-                release {
-                    storeFile file('#{keystore_abs}')
-                    storePassword '#{keystore_password}'
-                    keyAlias '#{key_alias}'
-                    keyPassword '#{key_password}'
-                }
-            }
-      SIGNING
-    )
-    gradle_content.gsub!(
-      /release \{.*?signingConfig signingConfigs\.debug/m,
-      "release {\n            signingConfig signingConfigs.release"
-    )
-    File.write(build_gradle, gradle_content)
+    build_gradle_path = File.absolute_path("../../app/android/app/build.gradle")
+    inject_release_signing(build_gradle_path, "../../my-release-key.keystore", keystore_password, key_alias, key_password)
     UI.success("✅ Release signing config injected")
     
     # Build
     UI.message("📦 Running Gradle assembleRelease...")
+    # Ensure local.properties has sdk.dir
+    android_sdk = ENV["ANDROID_HOME"] || ENV["ANDROID_SDK_ROOT"] || File.expand_path("~/Library/Android/sdk")
+    local_props = File.absolute_path("../../app/android/local.properties")
+    unless File.exist?(local_props) && File.read(local_props).include?("sdk.dir")
+      File.write(local_props, "sdk.dir=#{android_sdk}\n")
+      UI.message("   Wrote sdk.dir=#{android_sdk} to local.properties")
+    end
     # Run gradle from app directory to ensure correct autolinking resolution
     Dir.chdir("../../app") do
       sh("android/gradlew -p android clean assembleRelease")
