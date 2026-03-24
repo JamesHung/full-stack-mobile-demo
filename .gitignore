@@ -36,7 +36,9 @@ issuelog/ios-sim-current*.png
 
 # Android / Fastlane build artifacts
 android/.bundle/
+android/.gradle/
 android/vendor/
+android/make
 android/settings.gradle
 android/.env.local
 android/fastlane/report.xml
