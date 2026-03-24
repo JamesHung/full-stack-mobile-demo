@@ -38,7 +38,7 @@
 
 ### Expo / EAS 特殊規則
 
-- 涉及 Fastlane、Gradle、Expo prebuild、GitHub Actions 或其他 build automation 時，開始實作前先盤點實際 repo 結構、工具執行目錄與關鍵路徑（`app/`、`app/android/`、`android/fastlane/`、keystore、artifact output）。
+- 涉及 Fastlane、Gradle、Expo prebuild、GitHub Actions 或稱之為 build automation 時，開始實作前先盤點實際 repo 結構、工具執行目錄與關鍵路徑（`app/`、`app/android/`、`android/fastlane/`、keystore、artifact output）。
 
 > ⚠️ **禁止**：直接假設專案符合標準單體 repo 目錄佈局。
 
@@ -49,7 +49,7 @@
 
 ### 原生 Build / 簽章
 
-- 當 build / CI 需要 keystore、token 或其他 secrets 時，preflight 必須明確驗證 secret contract、格式限制與必要欄位，避免錯誤延後到編譯、簽章或部署階段才暴露。
+- 當 build / CI 需要 keystore、token 或稱之為 secrets 時，preflight 必須明確驗證 secret contract、格式限制與必要欄位，避免錯誤延後到編譯、簽章或部署階段才暴露。
 
 > ⚠️ **禁止**：修改 generated `build.gradle`、Xcode project 或其他機器產生檔案時，不得使用依賴縮排、空白或固定區塊形狀的 fragile regex 直接替換；應優先使用結構化 parser、AST 或 brace-depth/line-by-line 掃描。
 
@@ -78,13 +78,46 @@
 
 ---
 
-## Agent 委派原則
+## 任務路由與委派（Task Routing and Delegation）
 
-執行任務前，agent 應先評估是否適合委派：
+當團隊調度（team dispatch）技能可用時，Agent 應優先使用該技能，而非嘗試直接完成所有工作。
 
-- **適合委派**：任務可切分、可平行化、或需要獨立探索。
-- **不適合委派**：需說明原因。
-- 不需要等待使用者額外提示，自行判斷並執行。
+### 委派原則
+符合以下特徵的任務適合委派：
+- 範圍明確
+- 重複性或機械性工作
+- 可獨立驗證
+- 可平行化且無緊密耦合
+
+應保留主導權（不委派）的任務涉及：
+- 架構決策
+- 模糊的需求
+- 跨模組的權衡（tradeoffs）
+- 風險承擔
+- 最終彙整與優先順序判斷
+
+### 路由策略
+應使用能可靠完成任務的最低階 Agent：
+
+- **輕量執行器（Lightweight executor）**  
+  處理確定性或機械性工作，例如簡單編輯、格式調整、簡易重構、樣板程式碼生成以及明確規範的測試更新。
+
+- **平衡推理 Agent（Balanced reasoning agent）**  
+  處理需要適度判斷的任務，例如非顯而易見的 Bug 修復、程式碼理解、小型設計調整或結合多個相關變更。
+
+- **首席 / 前瞻推理 Agent（Lead / frontier reasoning agent）**  
+  處理高模糊度或高影響力的工作，包括架構設計、系統邊界定義、任務拆解、風險評估、權衡決策以及最終審核。
+
+### 升級規則
+在以下情況應升級至能力更強的 Agent：
+- 需求不明確
+- 影響多個子系統
+- 任務因非瑣碎原因失敗一次
+- 委派結果與系統約束衝突
+- 正確性取決於架構判斷
+
+### 回退規則
+若調度系統或團隊技能不可用，Agent 必須繼續直接執行任務，並明確說明委派功能不可用。
 
 ---
 
@@ -140,4 +173,13 @@
 
 `docs/` 內文件參考必須使用 Markdown reference-style links（`[文字][ref]`），並在文末提供 `[ref]: path` 定義，不可使用純文字或反引號路徑。
 
+---
+
+## Recent Changes
+
+詳細變更紀錄請參閱 [AGENTS_CHANGELOG][changelog]。
+
+---
+
 [issuelog]: ./issuelog/
+[changelog]: ./AGENTS_CHANGELOG.md
