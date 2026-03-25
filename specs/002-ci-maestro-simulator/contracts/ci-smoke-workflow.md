@@ -11,7 +11,7 @@ The implementation will add one workflow file at `.github/workflows/mobile-smoke
 | Job | Runner | Purpose |
 |-----|--------|---------|
 | `android-smoke` | Linux GitHub runner | Build/install app on Android emulator, boot required services, and run Maestro smoke |
-| `ios-smoke` | macOS GitHub runner | Build/install app on iOS simulator, boot required services, and run Maestro smoke |
+| `ios-smoke` | macOS GitHub runner (`macos-latest`, default Xcode, no version pinning) | Clean prebuild, pod install, codegen verify, build/install app on iPhone 16 iOS simulator, boot required services, install `idb`, and run Maestro smoke |
 
 ## Trigger Contract
 

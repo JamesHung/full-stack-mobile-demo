@@ -168,6 +168,52 @@ Task: "Enhance failure classification and service-exit reporting in scripts/maes
 
 ---
 
+## Phase 7: iOS Build Fix & CI Pipeline (FR-015, FR-016, TC-018, TC-019)
+
+**Purpose**: Fix the broken iOS native build and add the missing `ios-smoke` CI job. All T001–T032 are marked complete but iOS is non-functional.
+
+**⚠️ CRITICAL**: Group A (local build fix) MUST pass before Group B (CI) begins.
+
+### Group A: Fix iOS Native Build (Priority 1)
+
+- [X] T033 [US1] Align `newArchEnabled` to `"true"` in `app/ios/Podfile.properties.json` (TC-018)
+- [X] T034 [US1] Run `npx expo prebuild --clean --platform ios` to regenerate iOS native project with correct codegen (FR-015 step 1-2)
+- [X] T035 [US1] Run `cd app/ios && pod install` to install pods with new architecture enabled (FR-015 step 3)
+- [X] T036 [US1] Verify `ComponentDescriptors.cpp` files exist in `app/ios/build/generated/ios/react/renderer/components/` (FR-015 step 4)
+- [X] T037 [US1] Build iOS app with `pnpm --filter app exec expo run:ios --no-bundler` — must succeed (exit 0) (FR-015 step 5)
+- [X] T038 [US1] Run full `make maestro-ios-local` and verify Maestro happy-path passes on iOS simulator (FR-015 step 6)
+
+### Group B: Add iOS CI Job (Priority 2)
+
+- [X] T039 [US2] Add `ios-smoke` job to `.github/workflows/mobile-smoke.yml` with `macos-latest` runner (FR-016, TC-019)
+- [X] T040 [US2] Configure CI steps: checkout, install pnpm/Node.js 22/Python 3.13, install Maestro CLI + `idb` (TC-019)
+- [X] T041 [US2] Add iOS simulator boot step targeting "iPhone 16" with default iOS version (TC-019)
+- [X] T042 [US2] Add iOS build step using `expo run:ios --no-bundler` and Maestro run step (FR-016)
+- [X] T043 [US2] Add artifact upload for `voice-notes-smoke-ios` evidence (FR-016)
+- [X] T044 [US2] Validate complete workflow YAML syntax with `actionlint` or equivalent
+
+### Group C: Documentation & Regression
+
+- [X] T045 [US3] Update `issuelog/2026-03-23-ios-smoke-reactcodegen-missing-componentdescriptors.md` with resolution details
+- [X] T046 [US3] Run full regression suite (lint → test → build) to confirm no regressions
+
+### Dependency Graph (Phase 7)
+
+```
+T033 → T034 → T035 → T036 → T037 → T038
+                                       ↓
+                              T039 → T040 → T041 → T042 → T043 → T044
+                                                                    ↓
+                                                           T045 + T046
+```
+
+### Parallel Opportunities
+
+- T045 and T046 can run in parallel after T044 completes.
+- Within Group B, T039–T044 are sequential (each step builds on the previous).
+
+---
+
 ## Implementation Strategy
 
 ### MVP First (User Story 1 Only)
@@ -185,3 +231,4 @@ Task: "Enhance failure classification and service-exit reporting in scripts/maes
 3. Deliver US2 for path-filtered GitHub Actions enforcement
 4. Deliver US3 for failure diagnostics and hardening
 5. Finish with Phase 6 polish and the full regression suite
+6. **Phase 7**: Fix iOS build regression and add iOS CI pipeline

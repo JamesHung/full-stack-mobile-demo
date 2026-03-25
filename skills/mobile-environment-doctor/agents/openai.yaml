@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mobile Environment Doctor"
+  short_description: "Diagnose mobile dev environment and toolchain drift"
+  default_prompt: "Use $mobile-environment-doctor to diagnose this repo's mobile SDK, package manager, and Python environment setup."

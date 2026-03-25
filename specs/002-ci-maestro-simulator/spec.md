@@ -2,7 +2,7 @@
 
 **Feature Branch**: `002-ci-maestro-simulator`  
 **Created**: 2026-03-23  
-**Status**: Draft  
+**Status**: In Progress  
 **Input**: User description: "我想把CI 做好 , 串好maestro local run for android/ios simulator , do it"
 
 ## Clarifications
@@ -14,6 +14,14 @@
 - Q: When should CI automatically run Android and iOS smoke jobs? → A: 只有 app/backend/shared/.maestro/CI script 相關變更才跑
 - Q: What should happen if a CI platform cannot provision its simulator/emulator? → A: 該平台 smoke job 直接 fail
 - Q: Should the local smoke command auto-start API and worker services? → A: local smoke 指令自動啟 API + worker，再跑 smoke
+
+### Session 2026-03-24
+
+- Q: Should newArchEnabled be aligned to `true` or `false` across app.json and Podfile.properties.json? → A: Both set to `true` (new architecture is the Expo 52 / RN 0.76 default)
+- Q: Should the iOS CI runner pin a specific Xcode version via `xcode-select`, or use the default? → A: Use `macos-latest` with its default pre-installed Xcode (do not pin)
+- Q: Is the clean prebuild sequence (expo prebuild --clean → pod install → verify codegen → build) correct? → A: Yes, the exact sequence is correct
+- Q: Which iOS Simulator device/OS should CI target? → A: "iPhone 16" with the default iOS version available on the runner
+- Q: Is the Maestro `idb` (iOS Development Bridge) dependency for iOS simulator interaction documented for CI? → A: Add `idb` as an explicit CI dependency requirement
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -84,6 +92,11 @@
 - smoke 驗證會沿用固定 demo 帳號，但每次 run 都建立唯一 note 與對應 fixture 資料，避免跨 run 汙染
 - local smoke 入口會負責自動啟動 backend API 與 worker，減少本機重現前置手續
 
+### Known Issues & Regressions
+
+- **iOS Native Build Regression (2026-03-23)**: Running `make maestro-ios-local` fails with `xcodebuild` error code 65 because ReactCodegen artifacts are incomplete — specifically, `ComponentDescriptors.cpp` for `rngesturehandler_codegen` is missing from `app/ios/build/generated/ios/react/renderer/components/`. Root cause: `app.json` sets `newArchEnabled: true` (boolean) while `ios/Podfile.properties.json` sets `newArchEnabled: "false"` (string). This inconsistency causes the codegen layer to produce incomplete outputs. **Fix**: Update `ios/Podfile.properties.json` to set `"newArchEnabled": "true"` (aligning to the Expo 52 / RN 0.76 default), then run the clean prebuild sequence defined in FR-015. See `issuelog/2026-03-23-ios-smoke-reactcodegen-missing-componentdescriptors.md` for full analysis. All 32 implementation tasks are marked complete, but iOS smoke cannot actually run until this build regression is fixed.
+- **iOS CI Job Missing**: The `mobile-smoke.yml` workflow currently contains only the `android-smoke` job. The `ios-smoke` job referenced by FR-008 and FR-016 has not been implemented yet, despite task T019 being marked complete.
+
 ## Out Of Scope
 
 - 建立完整的多裝置、多 OS 版本測試矩陣
@@ -116,6 +129,8 @@
 - **FR-012**: Project documentation MUST describe how to prepare Android emulator and iOS simulator targets, execute the local runs, and interpret common failure modes.
 - **FR-013**: The regression workflow MUST preserve non-mobile checks so mobile smoke validation is added to, not substituted for, the existing quality gates.
 - **FR-014**: The solution MUST define what minimum evidence is retained from each CI smoke run so reviewers can inspect failures after the job completes.
+- **FR-015**: iOS native project MUST build successfully via `expo run:ios` or `xcodebuild` before any Maestro flow can execute. The build pipeline MUST follow this exact sequence: (1) `npx expo prebuild --clean --platform ios` to regenerate the `ios/` directory, (2) `cd ios && pod install` to install CocoaPods dependencies, (3) verify ReactCodegen outputs — specifically that `ComponentDescriptors.cpp` files exist for all codegen targets (e.g., `rngesturehandler_codegen`), and (4) `npx expo run:ios --no-bundler` to build and install the app on the target simulator.
+- **FR-016**: The `mobile-smoke.yml` CI workflow MUST contain an `ios-smoke` job that uses a `macos-latest` runner with the default pre-installed Xcode. The `ios-smoke` job MUST mirror the `android-smoke` job structure: checkout → install dependencies (including `idb` for Maestro iOS Simulator interaction) → preflight checks → boot "iPhone 16" simulator with the runner's default iOS version → iOS native build (clean prebuild → pod install → codegen verify → xcodebuild) → run Maestro flows → upload artifacts.
 
 ### Technical Constraints *(mandatory)*
 
@@ -136,6 +151,8 @@
 - **TC-015**: Any backend endpoint changed to support smoke stability MUST preserve a Swagger-visible description in the generated API schema.
 - **TC-016**: Mobile end-to-end verification MUST prioritize Maestro for simulator-based flows on both iOS and Android; alternative mobile E2E tooling is out of scope unless explicitly approved.
 - **TC-017**: Any web UI verification needed while implementing this feature MUST use Chrome MCP in this session rather than switching to another browser automation path.
+- **TC-018**: The `newArchEnabled` setting MUST be set to `true` in both `app.json` and `ios/Podfile.properties.json` (new architecture is the default for Expo 52 / React Native 0.76). A mismatch between these files — or setting either to `false` — is a build-blocking defect that MUST be resolved before iOS smoke runs can proceed. The fix is to update `ios/Podfile.properties.json` to `"newArchEnabled": "true"` to match `app.json`.
+- **TC-019**: The iOS CI smoke job MUST run on a `macos-latest` GitHub Actions runner using the default pre-installed Xcode version (do NOT pin a specific Xcode version via `xcode-select`). The job MUST install `idb` (iOS Development Bridge) as an explicit dependency, since Maestro requires `idb` for iOS Simulator interaction on CI. The iOS CI job MUST boot an "iPhone 16" simulator using the default iOS version available on the runner. The Android smoke job continues to use `ubuntu-latest`.
 
 ### Key Entities *(include if feature involves data)*
 
