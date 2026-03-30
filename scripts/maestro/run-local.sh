@@ -261,7 +261,6 @@ build_and_install_app() {
       return 0
     fi
   fi
-  fi
 
   return "${build_exit}"
 }
