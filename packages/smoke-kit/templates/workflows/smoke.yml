@@ -1,0 +1,38 @@
+# Mobile Smoke Tests
+# Consumer workflow that calls the reusable smoke-kit workflow.
+# Replace {{PLACEHOLDER}} values during scaffold.
+name: Mobile Smoke Tests
+
+on:
+  pull_request:
+    paths:
+      - "{{APP_ROOT}}/**"
+      - "{{BACKEND_ROOT}}/**"
+      - ".maestro/**"
+      - "{{CONFIG_PATH}}"
+  workflow_dispatch:
+
+jobs:
+  android-smoke:
+    uses: ./.github/workflows/reusable-smoke.yml
+    with:
+      platform: android
+      app-path: "{{ANDROID_APP_PATH}}"
+      enable-backend: true
+      upload-artifacts: true
+      config-path: "{{CONFIG_PATH}}"
+      timeout-minutes: 45
+    secrets:
+      backend-env: ${{ secrets.BACKEND_ENV }}
+
+  ios-smoke:
+    uses: ./.github/workflows/reusable-smoke.yml
+    with:
+      platform: ios
+      app-path: "{{IOS_APP_PATH}}"
+      enable-backend: true
+      upload-artifacts: true
+      config-path: "{{CONFIG_PATH}}"
+      timeout-minutes: 60
+    secrets:
+      backend-env: ${{ secrets.BACKEND_ENV }}

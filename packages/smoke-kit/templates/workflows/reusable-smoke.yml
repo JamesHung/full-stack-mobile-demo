@@ -1,0 +1,166 @@
+# Reusable Mobile Smoke Test Workflow
+# Template: scaffold into .github/workflows/ and replace {{PLACEHOLDER}} values.
+#
+# Usage (from a consumer workflow):
+#   jobs:
+#     smoke:
+#       uses: ./.github/workflows/reusable-smoke.yml
+#       with:
+#         platform: android
+#         app-path: path/to/app.apk
+name: Reusable Mobile Smoke Tests
+
+on:
+  workflow_call:
+    inputs:
+      platform:
+        description: "Target platform: android or ios"
+        required: true
+        type: string
+      app-path:
+        description: "Path to .apk (Android) or .app (iOS) bundle"
+        required: true
+        type: string
+      enable-backend:
+        description: "Start backend services before running tests"
+        required: false
+        type: boolean
+        default: true
+      upload-artifacts:
+        description: "Upload JUnit XML, logs, and screenshots as artifacts"
+        required: false
+        type: boolean
+        default: true
+      config-path:
+        description: "Path to smoke-kit configuration file"
+        required: false
+        type: string
+        default: "{{CONFIG_PATH}}"
+      node-version:
+        description: "Node.js version"
+        required: false
+        type: string
+        default: "20"
+      python-version:
+        description: "Python version (used when enable-backend is true)"
+        required: false
+        type: string
+        default: "3.13"
+      timeout-minutes:
+        description: "Job timeout in minutes"
+        required: false
+        type: number
+        default: 30
+    secrets:
+      backend-env:
+        description: "Backend .env file content (written to backend/.env)"
+        required: false
+
+jobs:
+  smoke:
+    name: smoke-${{ inputs.platform }}
+    runs-on: ${{ inputs.platform == 'ios' && 'macos-latest' || 'ubuntu-latest' }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    env:
+      SMOKE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+      MAESTRO_CLI_NO_ANALYTICS: 1
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Setup Node.js + pnpm ─────────────────────────────────
+      - name: Enable pnpm via corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: pnpm
+
+      # ── 3. Install dependencies ─────────────────────────────────
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ── 4. Backend setup (conditional) ───────────────────────────
+      - name: Setup Python
+        if: inputs.enable-backend
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Write backend .env
+        if: inputs.enable-backend && secrets.backend-env != ''
+        run: echo "${{ secrets.backend-env }}" > backend/.env
+
+      - name: Install backend dependencies
+        if: inputs.enable-backend
+        run: |
+          python -m pip install --quiet uv
+          uv sync --directory backend
+
+      - name: Start backend services
+        if: inputs.enable-backend
+        run: |
+          npx smoke-kit start-services \
+            --config ${{ inputs.config-path }} \
+            --platform ${{ inputs.platform }}
+
+      # ── 5. Preflight checks ──────────────────────────────────────
+      - name: Preflight
+        run: |
+          npx smoke-kit preflight \
+            --platform ${{ inputs.platform }} \
+            --config ${{ inputs.config-path }}
+
+      # ── 6. Run smoke tests ──────────────────────────────────────
+      - name: Run smoke tests
+        run: |
+          npx smoke-kit run \
+            --platform ${{ inputs.platform }} \
+            --app ${{ inputs.app-path }} \
+            --config ${{ inputs.config-path }}
+
+      # ── 7. Failure summary ──────────────────────────────────────
+      - name: Generate error summary
+        if: failure()
+        run: |
+          echo "## ❌ Smoke Test Failed — ${{ inputs.platform }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Platform | \`${{ inputs.platform }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| App | \`${{ inputs.app-path }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Config | \`${{ inputs.config-path }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Run ID | \`${{ env.SMOKE_RUN_ID }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f .artifacts/maestro/results.xml ]; then
+            echo "<details><summary>JUnit summary</summary>" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo '```xml' >> "$GITHUB_STEP_SUMMARY"
+            head -50 .artifacts/maestro/results.xml >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "</details>" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # ── 8. Upload artifacts ─────────────────────────────────────
+      - name: Upload smoke artifacts
+        if: always() && inputs.upload-artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-${{ inputs.platform }}-${{ env.SMOKE_RUN_ID }}
+          path: |
+            .artifacts/maestro/**/*.xml
+            .artifacts/maestro/**/*.log
+            .artifacts/maestro/**/*.png
+            .artifacts/maestro/**/*.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      # ── 9. Cleanup ──────────────────────────────────────────────
+      - name: Cleanup
+        if: always()
+        run: |
+          npx smoke-kit cleanup \
+            --config ${{ inputs.config-path }} 2>/dev/null || true
