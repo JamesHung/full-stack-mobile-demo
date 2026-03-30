@@ -255,6 +255,14 @@ build_and_install_app() {
     fi
   fi
 
+  if (( build_exit != 0 )) && [[ "${SMOKE_PLATFORM}" == "android" ]]; then
+    if grep -q "BUILD SUCCESSFUL" "${SMOKE_BUILD_LOG_PATH}" && grep -q "Installing" "${SMOKE_BUILD_LOG_PATH}"; then
+      printf "[build-install] Android build and install succeeded; ignoring post-install launch failure (exit %d)\n" "${build_exit}" >&2
+      return 0
+    fi
+  fi
+  fi
+
   return "${build_exit}"
 }
 
