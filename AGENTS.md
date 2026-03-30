@@ -36,6 +36,17 @@
 - 若無可執行測試入口，必須明確說明缺口與略過原因。
 - 回報結果時，需清楚列出實際執行的命令，以及成功、失敗、略過的原因。
 
+### CLI Flag 與依賴驗證
+
+- 使用 Expo CLI flag（如 `--dev-client`、`--go`）之前，**必須**在對應 `package.json` 確認相關 package 已安裝（例如 `--dev-client` 需要 `expo-dev-client`）。不可僅因範本、文件或既有腳本使用該 flag 就直接套用。
+- 此規則同樣適用於任何 CLI 工具的可選 flag：若 flag 功能依賴額外套件，commit 前必須驗證套件存在。
+
+### Shell 腳本語法驗證
+
+- 修改 `.sh` 檔案後，commit 前**必須**執行 `bash -n <file>` 驗證語法正確。
+- 涉及 `if/fi`、`case/esac`、`while/done` 等巢狀結構修改時，額外檢查配對完整性。
+- 若同時修改多個 `.sh` 檔案，可使用 `find scripts/ -name '*.sh' -exec bash -n {} \;` 批次驗證。
+
 ### Expo / EAS 特殊規則
 
 - 涉及 Fastlane、Gradle、Expo prebuild、GitHub Actions 或稱之為 build automation 時，開始實作前先盤點實際 repo 結構、工具執行目錄與關鍵路徑（`app/`、`app/android/`、`android/fastlane/`、keystore、artifact output）。

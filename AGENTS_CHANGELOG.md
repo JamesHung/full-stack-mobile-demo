@@ -2,6 +2,7 @@
 
 | 日期       | 變更摘要 |
 |------------|----------|
+| 2026-03-30 | 新增 CLI Flag 與依賴驗證規則、Shell 腳本語法驗證規則；新增 `ci-fix-loop` skill |
 | 2026-03-20 | 建立專案 constitution 基線（Expo、RN、TypeScript、Vitest、NativeWind、TanStack Query）|
 | 2026-03-20 | 擴充 constitution：優先共用 web/mobile 邏輯、跨平台視覺一致性、強制 regression suite |
 | 2026-03-20 | 新增 CI 視覺回歸治理；Expo Orbit 定位為本機 QA 輔助，非 CI gate |
