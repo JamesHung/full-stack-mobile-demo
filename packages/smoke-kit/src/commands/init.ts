@@ -71,7 +71,7 @@ export async function initCommand(opts: InitOptions): Promise<void> {
       ? [
           {
             name: "backend-api",
-            command: `uv run --directory ${backendRoot} uvicorn ${backendRoot}.src.main:app --host 0.0.0.0 --port 8000`,
+            command: `uv run --project ${backendRoot} uvicorn ${backendRoot}.src.main:app --host 0.0.0.0 --port 8000`,
             port: 8000,
             healthPath: "/docs",
             healthTimeout: 60,

@@ -1,14 +1,14 @@
 {
   "version": "1.0",
-  "appId": "{{APP_ID}}",
-  "appRoot": "{{APP_ROOT}}",
-  "backendRoot": "{{BACKEND_ROOT}}",
+  "appId": "com.demo.voicenotes",
+  "appRoot": "app",
+  "backendRoot": "backend",
   "platforms": ["android", "ios"],
   "services": [
     {
       "name": "backend-api",
-      "command": "uv run --project {{BACKEND_ROOT}} uvicorn {{BACKEND_ROOT}}.src.main:app --host 0.0.0.0 --port {{API_PORT}}",
-      "port": {{API_PORT}},
+      "command": "uv run --project backend uvicorn backend.src.main:app --host 0.0.0.0 --port 8000",
+      "port": 8000,
       "healthPath": "/docs",
       "healthTimeout": 60,
       "retryInterval": 2,
@@ -16,7 +16,7 @@
     }
   ],
   "metro": {
-    "port": {{METRO_PORT}},
+    "port": 8081,
     "host": "127.0.0.1",
     "healthPath": "/status",
     "healthTimeout": 60
