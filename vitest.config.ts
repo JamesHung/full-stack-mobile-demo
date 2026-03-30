@@ -12,10 +12,15 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: true,
-    include: ["tests/**/*.test.ts"],
+    include: ["tests/**/*.test.ts", "packages/smoke-kit/__tests__/**/*.test.ts"],
     coverage: {
       reporter: ["text", "html"],
-      include: ["packages/shared/src/**/*.ts", "app/**/*.ts", "app/**/*.tsx"],
+      include: [
+        "packages/shared/src/**/*.ts",
+        "app/**/*.ts",
+        "app/**/*.tsx",
+        "packages/smoke-kit/src/**/*.ts",
+      ],
     },
   },
 });

@@ -32,8 +32,8 @@ Defines a backend or auxiliary service that must be running before Maestro flows
 | `command` | `string` | **Yes** | — | Shell command to start the service (e.g. `"uv run uvicorn main:app"`). |
 | `port` | `number` | **Yes** | — | TCP port the service listens on. Used for health checks. |
 | `healthPath` | `string` | No | — | HTTP path for health check (e.g. `"/health"`). When set, health checks use HTTP instead of TCP. |
-| `healthTimeout` | `number` | No | `30000` | Maximum time in ms to wait for the service to become healthy. |
-| `retryInterval` | `number` | No | `1000` | Interval in ms between health check retries. |
+| `healthTimeout` | `number` | No | `60` | Maximum time in seconds to wait for the service to become healthy. |
+| `retryInterval` | `number` | No | `2` | Interval in seconds between health check retries. |
 | `logFile` | `string` | No | — | Path to write service stdout/stderr. Relative to `artifacts.outputRoot`. |
 | `env` | `Record<string, string>` | No | `{}` | Additional environment variables passed to the service process. |
 
@@ -48,7 +48,7 @@ Metro bundler settings for the React Native / Expo app under test.
 | `port` | `number` | **Yes** | `8081` | Port Metro listens on. |
 | `host` | `string` | No | `"localhost"` | Host Metro binds to. |
 | `healthPath` | `string` | No | `"/status"` | HTTP path to check Metro readiness. |
-| `healthTimeout` | `number` | No | `60000` | Maximum time in ms to wait for Metro to become ready. |
+| `healthTimeout` | `number` | No | `60` | Maximum time in seconds to wait for Metro to become ready. |
 
 ---
 
@@ -83,8 +83,8 @@ Global defaults for service health checks. Individual `ServiceConfig` fields ove
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `timeout` | `number` | No | `30000` | Default health check timeout in ms. |
-| `retryInterval` | `number` | No | `1000` | Default retry interval in ms. |
+| `timeout` | `number` | No | `60` | Default health check timeout in seconds. |
+| `retryInterval` | `number` | No | `2` | Default retry interval in seconds. |
 | `httpMethod` | `"GET" \| "HEAD"` | No | `"GET"` | HTTP method used for HTTP health checks. |
 
 ---
@@ -95,7 +95,7 @@ Global defaults for service health checks. Individual `ServiceConfig` fields ove
 
 ```json
 {
-  "version": "1",
+  "version": "1.0",
   "appId": "com.example.myapp",
   "appRoot": "app",
   "backendRoot": "backend",
@@ -106,7 +106,7 @@ Global defaults for service health checks. Individual `ServiceConfig` fields ove
       "command": "uv run uvicorn main:app --host 0.0.0.0 --port 8000",
       "port": 8000,
       "healthPath": "/health",
-      "healthTimeout": 30000,
+      "healthTimeout": 60,
       "env": {
         "DATABASE_URL": "sqlite:///./test.db"
       }
@@ -115,7 +115,7 @@ Global defaults for service health checks. Individual `ServiceConfig` fields ove
   "metro": {
     "port": 8081,
     "healthPath": "/status",
-    "healthTimeout": 60000
+    "healthTimeout": 60
   },
   "flows": {
     "directory": "maestro",
@@ -128,8 +128,8 @@ Global defaults for service health checks. Individual `ServiceConfig` fields ove
     "summaryFile": "summary.json"
   },
   "healthCheck": {
-    "timeout": 30000,
-    "retryInterval": 1000,
+    "timeout": 60,
+    "retryInterval": 2,
     "httpMethod": "GET"
   }
 }
@@ -139,7 +139,7 @@ Global defaults for service health checks. Individual `ServiceConfig` fields ove
 
 ```json
 {
-  "version": "1",
+  "version": "1.0",
   "appId": "com.standalone.app",
   "appRoot": ".",
   "platforms": ["android"],
@@ -168,7 +168,7 @@ Global defaults for service health checks. Individual `ServiceConfig` fields ove
 
 ```json
 {
-  "version": "1",
+  "version": "1.0",
   "appId": "com.example.multiservice",
   "appRoot": "app",
   "backendRoot": "services",
@@ -179,8 +179,8 @@ Global defaults for service health checks. Individual `ServiceConfig` fields ove
       "command": "node dist/gateway.js",
       "port": 4000,
       "healthPath": "/healthz",
-      "healthTimeout": 15000,
-      "retryInterval": 500,
+      "healthTimeout": 15,
+      "retryInterval": 1,
       "logFile": "gateway.log"
     },
     {
@@ -188,7 +188,7 @@ Global defaults for service health checks. Individual `ServiceConfig` fields ove
       "command": "uv run uvicorn auth.main:app --port 4001",
       "port": 4001,
       "healthPath": "/health",
-      "healthTimeout": 20000,
+      "healthTimeout": 20,
       "env": {
         "JWT_SECRET": "test-secret",
         "DATABASE_URL": "sqlite:///./auth-test.db"
@@ -198,15 +198,15 @@ Global defaults for service health checks. Individual `ServiceConfig` fields ove
       "name": "worker",
       "command": "node dist/worker.js",
       "port": 4002,
-      "healthTimeout": 45000,
-      "retryInterval": 2000,
+      "healthTimeout": 45,
+      "retryInterval": 3,
       "logFile": "worker.log"
     }
   ],
   "metro": {
     "port": 8081,
     "healthPath": "/status",
-    "healthTimeout": 90000
+    "healthTimeout": 90
   },
   "flows": {
     "directory": "maestro",
@@ -219,8 +219,8 @@ Global defaults for service health checks. Individual `ServiceConfig` fields ove
     "summaryFile": "report.json"
   },
   "healthCheck": {
-    "timeout": 30000,
-    "retryInterval": 1000,
+    "timeout": 60,
+    "retryInterval": 2,
     "httpMethod": "GET"
   }
 }
@@ -230,7 +230,7 @@ Global defaults for service health checks. Individual `ServiceConfig` fields ove
 
 ```json
 {
-  "version": "1",
+  "version": "1.0",
   "appId": "com.example.fastapi",
   "appRoot": "mobile",
   "backendRoot": "services/api",
@@ -241,8 +241,8 @@ Global defaults for service health checks. Individual `ServiceConfig` fields ove
       "command": "uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
       "port": 8000,
       "healthPath": "/health",
-      "healthTimeout": 30000,
-      "retryInterval": 1000,
+      "healthTimeout": 60,
+      "retryInterval": 2,
       "env": {
         "ENV": "test",
         "STORAGE_PATH": "./test-uploads"

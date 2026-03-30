@@ -1,0 +1,8 @@
+appId: {{APP_ID}}
+env:
+  SMOKE_PLATFORM: android
+  SMOKE_PLATFORM_LABEL: Android
+---
+- runFlow:
+    label: "Run Android smoke journey"
+    file: canonical-flow.yaml
