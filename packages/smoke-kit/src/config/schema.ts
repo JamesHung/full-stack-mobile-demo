@@ -16,7 +16,7 @@ export const smokeConfigSchema: JSONSchemaType<SmokeConfig> = {
     "metro",
     "flows",
     "artifacts",
-  ],
+  ] as const,
   additionalProperties: false,
   properties: {
     $schema: {
@@ -236,6 +236,26 @@ export const smokeConfigSchema: JSONSchemaType<SmokeConfig> = {
         },
       },
       description: "Global health check defaults",
+    },
+    emulator: {
+      type: "object",
+      nullable: true,
+      required: [] as const,
+      additionalProperties: false,
+      properties: {
+        avd: {
+          type: "string",
+          nullable: true,
+          description: "AVD name to boot (auto-detected from emulator -list-avds if omitted)",
+        },
+        bootTimeout: {
+          type: "integer",
+          minimum: 10,
+          nullable: true,
+          description: "Seconds to wait for emulator boot (default: 120)",
+        },
+      },
+      description: "Android emulator lifecycle configuration",
     },
   },
 };

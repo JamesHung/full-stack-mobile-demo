@@ -10,7 +10,12 @@ import type { Platform } from "../utils/platform.js";
 import { generateRunId } from "../utils/platform.js";
 import { ExitCode, exitCodeLabel } from "../utils/exit-codes.js";
 import { startService, isProcessAlive } from "./service-manager.js";
-import { registerCleanup, killAllServices } from "./cleanup.js";
+import { registerCleanup, killAllServices, setCleanupVerbose } from "./cleanup.js";
+import {
+  ensureEmulatorRunning,
+  killProcessOnPort,
+  isDeviceBooted,
+} from "./emulator-manager.js";
 import { tcpProbe } from "../health/tcp-probe.js";
 import { httpProbe } from "../health/http-probe.js";
 import { tailLines } from "../logs/tail.js";
@@ -34,6 +39,7 @@ export async function executePipeline(
   opts: PipelineOptions,
 ): Promise<number> {
   registerCleanup();
+  if (opts.verbose) setCleanupVerbose(true);
 
   const runId = opts.runId ?? generateRunId(process.env["SMOKE_RUN_ID"]);
   const outputDir = join(
@@ -140,7 +146,34 @@ export async function executePipeline(
     });
   }
 
-  // Stage 2: Service Startup
+  // Stage 2: Setup (emulator boot + port cleanup)
+  {
+    const ok = await runStage("setup", ExitCode.PREFLIGHT_FAILURE, async () => {
+      // Boot emulator if needed (Android only)
+      if (opts.platform === "android") {
+        const avd = opts.config.emulator?.avd;
+        const bootTimeout = opts.config.emulator?.bootTimeout ?? 120;
+        await ensureEmulatorRunning(avd, bootTimeout, opts.verbose);
+      }
+
+      // Kill stale processes occupying service ports
+      if (!opts.skipBackend) {
+        for (const svc of opts.config.services) {
+          if (svc.port) {
+            if (opts.verbose) console.log(`Ensuring port ${svc.port} is free for ${svc.name}...`);
+            killProcessOnPort(svc.port);
+          }
+        }
+        if (opts.verbose) console.log(`Ensuring port ${opts.config.metro.port} is free for metro...`);
+        killProcessOnPort(opts.config.metro.port);
+        // Brief pause for ports to release
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    });
+    if (!ok) { killAllServices(); return writeSummaryAndExit(); }
+  }
+
+  // Stage 3: Service Startup
   if (!opts.skipBackend && opts.config.services.length > 0) {
     const ok = await runStage("service-startup", ExitCode.SERVICE_STARTUP_FAILURE, async () => {
       for (const svc of opts.config.services) {
@@ -186,7 +219,7 @@ export async function executePipeline(
     if (!ok) { killAllServices(); return writeSummaryAndExit(); }
   }
 
-  // Stage 3: Health Check
+  // Stage 4: Health Check
   if (!opts.skipBackend && opts.config.services.length > 0) {
     const ok = await runStage("health-check", ExitCode.HEALTH_CHECK_TIMEOUT, async () => {
       const defaults = opts.config.healthCheck;
@@ -250,7 +283,7 @@ export async function executePipeline(
     if (!ok) { killAllServices(); return writeSummaryAndExit(); }
   }
 
-  // Stage 4: Test Execution
+  // Stage 5: Test Execution
   {
     const ok = await runStage("test-execution", ExitCode.TEST_EXECUTION_FAILURE, async () => {
       // Dismiss ANR / system dialogs on Android emulators before running tests
@@ -340,10 +373,10 @@ export async function executePipeline(
     if (!ok) { killAllServices(); return writeSummaryAndExit(); }
   }
 
-  // Cleanup
+  // Stage 6: Teardown
   killAllServices();
   stages.push({
-    name: "cleanup",
+    name: "teardown",
     status: "passed",
     exitCode: 0,
     durationMs: 0,

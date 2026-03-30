@@ -38,6 +38,11 @@ export interface HealthCheckDefaults {
   httpMethod?: "GET" | "HEAD";
 }
 
+export interface EmulatorConfig {
+  avd?: string;
+  bootTimeout?: number;
+}
+
 export interface SmokeConfig {
   $schema?: string;
   version: string;
@@ -50,6 +55,7 @@ export interface SmokeConfig {
   flows: FlowConfig;
   artifacts: ArtifactConfig;
   healthCheck?: HealthCheckDefaults;
+  emulator?: EmulatorConfig;
 }
 
 export interface StageResult {

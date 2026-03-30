@@ -1,6 +1,13 @@
 import { getRegistry, clearRegistry } from "./service-manager.js";
+import { stopEmulator, wasStartedByUs } from "./emulator-manager.js";
+import { execSync } from "node:child_process";
 
 let cleanupRegistered = false;
+let verboseCleanup = false;
+
+export function setCleanupVerbose(v: boolean): void {
+  verboseCleanup = v;
+}
 
 export function registerCleanup(): void {
   if (cleanupRegistered) return;
@@ -24,9 +31,9 @@ export function registerCleanup(): void {
 export function killAllServices(): void {
   const services = [...getRegistry()].reverse();
 
+  // SIGTERM all services
   for (const svc of services) {
     try {
-      // Kill the process group
       process.kill(-svc.pid, "SIGTERM");
     } catch {
       try {
@@ -37,8 +44,12 @@ export function killAllServices(): void {
     }
   }
 
-  // Give 3 seconds, then SIGKILL survivors
-  setTimeout(() => {
+  // Synchronous grace period then SIGKILL survivors
+  if (services.length > 0) {
+    try {
+      execSync("sleep 2", { stdio: "ignore", timeout: 5000 });
+    } catch { /* */ }
+
     for (const svc of services) {
       try {
         process.kill(-svc.pid, "SIGKILL");
@@ -50,7 +61,12 @@ export function killAllServices(): void {
         }
       }
     }
-  }, 3000);
+  }
 
   clearRegistry();
+
+  // Stop emulator if we started it
+  if (wasStartedByUs()) {
+    stopEmulator(verboseCleanup);
+  }
 }

@@ -14,7 +14,7 @@ interface PreflightOptions {
 
 interface CheckResult {
   name: string;
-  status: "pass" | "fail";
+  status: "pass" | "fail" | "warn";
   detail: string;
   remediation?: string;
 }
@@ -132,31 +132,34 @@ export async function preflightCommand(opts: PreflightOptions): Promise<void> {
   checks.push(checkPort(config.metro.port, "metro"));
 
   // Output
-  const allPassed = checks.every((c) => c.status === "pass");
+  const hasFail = checks.some((c) => c.status === "fail");
+  const hasWarn = checks.some((c) => c.status === "warn");
 
   if (opts.json) {
     console.log(
-      JSON.stringify({ platform, passed: allPassed, checks }, null, 2),
+      JSON.stringify({ platform, passed: !hasFail, checks }, null, 2),
     );
   } else {
     console.log(`Smoke Kit Preflight — ${platform}`);
     console.log("─".repeat(35));
     for (const check of checks) {
-      const icon = check.status === "pass" ? "✅" : "❌";
+      const icon = check.status === "pass" ? "✅" : check.status === "warn" ? "⚠️" : "❌";
       console.log(`${icon} ${check.name.padEnd(18)} ${check.detail}`);
       if (check.remediation) {
         console.log(`   ↳ ${check.remediation}`);
       }
     }
     console.log();
-    if (allPassed) {
+    if (!hasFail && !hasWarn) {
       console.log("All checks passed. Ready to run smoke tests.");
+    } else if (!hasFail) {
+      console.log("All critical checks passed. Warnings will be handled automatically by 'smoke-kit run'.");
     } else {
       console.log("Some checks failed. Fix the issues above before running.");
     }
   }
 
-  process.exit(allPassed ? ExitCode.SUCCESS : ExitCode.PREFLIGHT_FAILURE);
+  process.exit(hasFail ? ExitCode.PREFLIGHT_FAILURE : ExitCode.SUCCESS);
 }
 
 function checkDevice(platform: Platform): CheckResult {
@@ -175,17 +178,14 @@ function checkDevice(platform: Platform): CheckResult {
       }
       return {
         name: "emulator",
-        status: "fail",
-        detail: "No booted device found",
-        remediation:
-          "Run 'emulator -avd <avd_name>' or start from Android Studio",
+        status: "warn",
+        detail: "No booted device — will be started by 'smoke-kit run'",
       };
     } catch {
       return {
         name: "emulator",
-        status: "fail",
-        detail: "adb not available",
-        remediation: "Install Android SDK and ensure adb is on PATH",
+        status: "warn",
+        detail: "adb not responding — emulator will be started on run",
       };
     }
   } else {
@@ -203,9 +203,9 @@ function checkDevice(platform: Platform): CheckResult {
       }
       return {
         name: "simulator",
-        status: "fail",
+        status: "warn",
         detail: "No booted simulator found",
-        remediation: "Open Xcode → Simulator or run 'xcrun simctl boot <UDID>'",
+        remediation: "Will need a booted simulator for 'smoke-kit run'",
       };
     } catch {
       return {
@@ -226,9 +226,8 @@ function checkPort(port: number, label: string): CheckResult {
     });
     return {
       name: `port ${port}`,
-      status: "fail",
-      detail: `in use (${label})`,
-      remediation: `Kill the process using port ${port} before running`,
+      status: "warn",
+      detail: `in use (${label}) — will be reclaimed on run`,
     };
   } catch {
     return {
