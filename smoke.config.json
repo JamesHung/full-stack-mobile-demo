@@ -13,13 +13,24 @@
       "healthTimeout": 60,
       "retryInterval": 2,
       "logFile": "backend-api.log"
+    },
+    {
+      "name": "backend-worker",
+      "command": "uv run --project backend python -m backend.src.workers.notes",
+      "logFile": "worker.log",
+      "env": {
+        "PYTHONPATH": ".",
+        "VOICE_NOTES_PROCESSING_POLL_INTERVAL_MS": "3000"
+      }
     }
   ],
   "metro": {
     "port": 8081,
     "host": "127.0.0.1",
     "healthPath": "/status",
-    "healthTimeout": 60
+    "healthTimeout": 90,
+    "command": "pnpm --filter app exec expo start --dev-client --port 8081",
+    "logFile": "metro.log"
   },
   "flows": {
     "directory": ".maestro",

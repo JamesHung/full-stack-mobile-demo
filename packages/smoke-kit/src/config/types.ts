@@ -1,7 +1,7 @@
 export interface ServiceConfig {
   name: string;
   command: string;
-  port: number;
+  port?: number;
   healthPath?: string;
   healthTimeout?: number;
   retryInterval?: number;
@@ -14,6 +14,9 @@ export interface MetroConfig {
   host?: string;
   healthPath?: string;
   healthTimeout?: number;
+  command?: string;
+  logFile?: string;
+  env?: Record<string, string>;
 }
 
 export interface FlowConfig {

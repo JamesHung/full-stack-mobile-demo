@@ -156,6 +156,32 @@ export async function executePipeline(
           );
         }
       }
+
+      // Start Metro bundler
+      const metroCommand = opts.config.metro.command
+        ?? `pnpm --filter ${opts.config.appRoot} exec expo start --dev-client --port ${opts.config.metro.port}`;
+      const metroLogFile = join(logsDir, opts.config.metro.logFile ?? "metro.log");
+
+      const backendPort = opts.config.services[0]?.port ?? 8000;
+      const androidApiUrl = `http://10.0.2.2:${backendPort}`;
+      const iosApiUrl = `http://127.0.0.1:${backendPort}`;
+
+      const metroEnv: Record<string, string> = {
+        CI: "1",
+        EXPO_NO_TELEMETRY: "1",
+        EXPO_PUBLIC_API_BASE_URL: opts.platform === "android" ? androidApiUrl : iosApiUrl,
+        EXPO_PUBLIC_API_BASE_URL_ANDROID: androidApiUrl,
+        EXPO_PUBLIC_API_BASE_URL_IOS: iosApiUrl,
+        ...opts.config.metro.env,
+      };
+
+      if (opts.verbose) console.log(`Starting Metro: ${metroCommand}`);
+      const metroTracked = await startService("metro", metroCommand, metroLogFile, metroEnv);
+
+      await new Promise((r) => setTimeout(r, 2000));
+      if (!isProcessAlive(metroTracked.pid)) {
+        throw new Error("Metro bundler exited immediately after startup");
+      }
     });
     if (!ok) { killAllServices(); return writeSummaryAndExit(); }
   }
@@ -166,6 +192,11 @@ export async function executePipeline(
       const defaults = opts.config.healthCheck;
 
       for (const svc of opts.config.services) {
+        if (!svc.port) {
+          if (opts.verbose) console.log(`Skipping health check for ${svc.name} (no port configured)`);
+          continue;
+        }
+
         const timeout = svc.healthTimeout ?? defaults?.timeout ?? 60;
         const interval = svc.retryInterval ?? defaults?.retryInterval ?? 2;
 
@@ -222,6 +253,24 @@ export async function executePipeline(
   // Stage 4: Test Execution
   {
     const ok = await runStage("test-execution", ExitCode.TEST_EXECUTION_FAILURE, async () => {
+      // Dismiss ANR / system dialogs on Android emulators before running tests
+      if (opts.platform === "android") {
+        try {
+          execSync("adb shell settings put global hide_error_dialogs 1", { stdio: "ignore", timeout: 5000 });
+          execSync("adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS", { stdio: "ignore", timeout: 5000 });
+          // Forward host ports so the emulator can reach Metro and backend
+          for (const svc of opts.config.services) {
+            if (svc.port) {
+              execSync(`adb reverse tcp:${svc.port} tcp:${svc.port}`, { stdio: "ignore", timeout: 5000 });
+            }
+          }
+          execSync(`adb reverse tcp:${opts.config.metro.port} tcp:${opts.config.metro.port}`, { stdio: "ignore", timeout: 5000 });
+          if (opts.verbose) console.log("Prepared Android emulator (dialogs dismissed, ports forwarded)");
+        } catch {
+          // Best effort — emulator may not support these commands
+        }
+      }
+
       const flowDir = opts.config.flows.directory;
       const flowFile =
         opts.platform === "android"
@@ -239,6 +288,10 @@ export async function executePipeline(
       await mkdir(debugOutputDir, { recursive: true });
 
       const deviceId = process.env["MAESTRO_DEVICE_ID"] ?? "";
+
+      const noteTitle = process.env["SMOKE_NOTE_TITLE"]?.trim()
+        || `fail weekly sync ${runId}`;
+
       const maestroArgs = [
         `--platform=${opts.platform}`,
         ...(deviceId ? [`--device=${deviceId}`] : []),
@@ -249,6 +302,10 @@ export async function executePipeline(
         `--test-output-dir=${testOutputDir}`,
         `--debug-output=${debugOutputDir}`,
         "--flatten-debug-output",
+        "-e", `SMOKE_NOTE_TITLE=${noteTitle}`,
+        "-e", `SMOKE_RUN_ID=${runId}`,
+        "-e", `SMOKE_PLATFORM=${opts.platform}`,
+        "-e", `SMOKE_APP_ID=${opts.config.appId}`,
       ];
 
       if (opts.verbose) console.log(`Running: maestro ${maestroArgs.join(" ")}`);
@@ -261,6 +318,7 @@ export async function executePipeline(
           SMOKE_RUN_ID: runId,
           SMOKE_PLATFORM: opts.platform,
           SMOKE_APP_ID: opts.config.appId,
+          SMOKE_NOTE_TITLE: noteTitle,
         },
         timeout: (opts.timeout ?? 300) * 1000,
       });

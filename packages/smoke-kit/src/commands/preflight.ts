@@ -49,11 +49,14 @@ export async function preflightCommand(opts: PreflightOptions): Promise<void> {
     ...backendTools,
   ];
 
+  // maestro (JVM-based) needs longer timeout for cold start
+  const toolTimeout = (t: string) => (t === "maestro" ? 15_000 : 5_000);
+
   for (const tool of tools) {
     try {
       const version = execSync(`${tool} --version 2>/dev/null || ${tool} -version 2>/dev/null || echo "available"`, {
         encoding: "utf-8",
-        timeout: 5000,
+        timeout: toolTimeout(tool),
       }).trim().split("\n")[0] ?? "available";
       checks.push({ name: tool, status: "pass", detail: version });
     } catch {
@@ -122,7 +125,9 @@ export async function preflightCommand(opts: PreflightOptions): Promise<void> {
 
   // Port availability
   for (const svc of config.services) {
-    checks.push(checkPort(svc.port, svc.name));
+    if (svc.port) {
+      checks.push(checkPort(svc.port, svc.name));
+    }
   }
   checks.push(checkPort(config.metro.port, "metro"));
 

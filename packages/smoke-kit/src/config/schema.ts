@@ -59,7 +59,7 @@ export const smokeConfigSchema: JSONSchemaType<SmokeConfig> = {
       type: "array",
       items: {
         type: "object",
-        required: ["name", "command", "port"],
+        required: ["name", "command"],
         additionalProperties: false,
         properties: {
           name: {
@@ -76,7 +76,8 @@ export const smokeConfigSchema: JSONSchemaType<SmokeConfig> = {
             type: "integer",
             minimum: 1,
             maximum: 65535,
-            description: "TCP port the service listens on",
+            nullable: true,
+            description: "TCP port the service listens on (omit for background workers)",
           },
           healthPath: {
             type: "string",
@@ -137,6 +138,23 @@ export const smokeConfigSchema: JSONSchemaType<SmokeConfig> = {
           minimum: 1,
           nullable: true,
           description: "Seconds to wait for Metro readiness",
+        },
+        command: {
+          type: "string",
+          nullable: true,
+          description: "Shell command to start Metro bundler",
+        },
+        logFile: {
+          type: "string",
+          nullable: true,
+          description: "Log file name within artifacts log directory",
+        },
+        env: {
+          type: "object",
+          nullable: true,
+          required: [] as const,
+          additionalProperties: { type: "string" },
+          description: "Additional environment variables for Metro",
         },
       },
       description: "Metro bundler configuration",
