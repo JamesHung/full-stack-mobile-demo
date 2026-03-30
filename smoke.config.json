@@ -50,6 +50,7 @@
   },
   "emulator": {
     "avd": "Medium_Phone_API_36.1",
+    "simulatorUdid": "FB7ECC47-CBDD-44D9-AD51-3CD406C09F81",
     "bootTimeout": 120
   }
 }

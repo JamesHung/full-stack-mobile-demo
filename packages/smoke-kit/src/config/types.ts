@@ -40,6 +40,7 @@ export interface HealthCheckDefaults {
 
 export interface EmulatorConfig {
   avd?: string;
+  simulatorUdid?: string;
   bootTimeout?: number;
 }
 

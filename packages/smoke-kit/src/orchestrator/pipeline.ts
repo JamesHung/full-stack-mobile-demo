@@ -13,6 +13,7 @@ import { startService, isProcessAlive } from "./service-manager.js";
 import { registerCleanup, killAllServices, setCleanupVerbose } from "./cleanup.js";
 import {
   ensureEmulatorRunning,
+  ensureSimulatorRunning,
   killProcessOnPort,
   isDeviceBooted,
 } from "./emulator-manager.js";
@@ -146,14 +147,18 @@ export async function executePipeline(
     });
   }
 
-  // Stage 2: Setup (emulator boot + port cleanup)
+  // Stage 2: Setup (emulator/simulator boot + port cleanup)
   {
     const ok = await runStage("setup", ExitCode.PREFLIGHT_FAILURE, async () => {
-      // Boot emulator if needed (Android only)
+      // Boot device if needed
       if (opts.platform === "android") {
         const avd = opts.config.emulator?.avd;
         const bootTimeout = opts.config.emulator?.bootTimeout ?? 120;
         await ensureEmulatorRunning(avd, bootTimeout, opts.verbose);
+      } else if (opts.platform === "ios") {
+        const udid = opts.config.emulator?.simulatorUdid;
+        const bootTimeout = opts.config.emulator?.bootTimeout ?? 120;
+        await ensureSimulatorRunning(udid, bootTimeout, opts.verbose);
       }
 
       // Kill stale processes occupying service ports

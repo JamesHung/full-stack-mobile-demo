@@ -248,6 +248,11 @@ export const smokeConfigSchema: JSONSchemaType<SmokeConfig> = {
           nullable: true,
           description: "AVD name to boot (auto-detected from emulator -list-avds if omitted)",
         },
+        simulatorUdid: {
+          type: "string",
+          nullable: true,
+          description: "iOS simulator UDID to boot (auto-detected if omitted)",
+        },
         bootTimeout: {
           type: "integer",
           minimum: 10,

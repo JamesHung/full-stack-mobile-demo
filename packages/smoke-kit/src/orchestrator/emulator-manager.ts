@@ -1,8 +1,13 @@
 import { execSync, spawn, type ChildProcess } from "node:child_process";
 import { join } from "node:path";
 
-let startedByUs = false;
+// --- Android state ---
+let androidStartedByUs = false;
 let emulatorProcess: ChildProcess | null = null;
+
+// --- iOS state ---
+let iosStartedByUs = false;
+let iosBootedUdid: string | null = null;
 
 /**
  * Resolve the correct emulator binary path.
@@ -101,7 +106,7 @@ export async function ensureEmulatorRunning(
     detached: true,
   });
   emulatorProcess.unref();
-  startedByUs = true;
+  androidStartedByUs = true;
 
   // Wait for device to appear and boot_completed
   const deadline = Date.now() + bootTimeout * 1000;
@@ -132,7 +137,7 @@ export async function ensureEmulatorRunning(
 
 /** Stop the emulator if smoke-kit started it. */
 export function stopEmulator(verbose = false): void {
-  if (!startedByUs) return;
+  if (!androidStartedByUs) return;
 
   if (verbose) console.log("Stopping emulator...");
 
@@ -149,12 +154,144 @@ export function stopEmulator(verbose = false): void {
     }
   }
 
-  startedByUs = false;
+  androidStartedByUs = false;
   emulatorProcess = null;
 }
 
 export function wasStartedByUs(): boolean {
-  return startedByUs;
+  return androidStartedByUs || iosStartedByUs;
+}
+
+// ─── iOS Simulator ───────────────────────────────────────────
+
+/** Check if any iOS simulator is booted. */
+export function isSimulatorBooted(): boolean {
+  try {
+    const output = execSync(
+      "xcrun simctl list devices booted | grep -oE '[A-F0-9-]{36}' | head -1",
+      { encoding: "utf-8", timeout: 10_000 },
+    ).trim();
+    return output.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/** Return the UDID of the first booted simulator, or null. */
+export function getBootedSimulatorUdid(): string | null {
+  try {
+    const output = execSync(
+      "xcrun simctl list devices booted | grep -oE '[A-F0-9-]{36}' | head -1",
+      { encoding: "utf-8", timeout: 10_000 },
+    ).trim();
+    return output || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Find the UDID of a simulator by name substring (e.g. "iPhone 17 Pro").
+ * Returns the first match from available devices, or null.
+ */
+export function findSimulatorUdid(nameHint: string): string | null {
+  try {
+    const output = execSync("xcrun simctl list devices available", {
+      encoding: "utf-8",
+      timeout: 10_000,
+    });
+    for (const line of output.split("\n")) {
+      if (line.includes(nameHint)) {
+        const match = line.match(/\(([A-F0-9-]{36})\)/);
+        if (match) return match[1]!;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Return the UDID of the first available iPhone simulator. */
+function findFirstAvailableIphone(): string | null {
+  try {
+    const output = execSync("xcrun simctl list devices available", {
+      encoding: "utf-8",
+      timeout: 10_000,
+    });
+    for (const line of output.split("\n")) {
+      if (line.includes("iPhone") && line.includes("Shutdown")) {
+        const match = line.match(/\(([A-F0-9-]{36})\)/);
+        if (match) return match[1]!;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Ensure an iOS simulator is booted.
+ * If one is already running, reuse it.
+ * Otherwise boot the configured (or first available) simulator.
+ */
+export async function ensureSimulatorRunning(
+  udid?: string,
+  bootTimeout = 120,
+  verbose = false,
+): Promise<void> {
+  if (isSimulatorBooted()) {
+    if (verbose) console.log("iOS simulator already booted — reusing");
+    return;
+  }
+
+  const targetUdid = udid ?? findFirstAvailableIphone();
+  if (!targetUdid) {
+    throw new Error("No iOS simulators found. Create one via Xcode or `xcrun simctl create`.");
+  }
+
+  if (verbose) console.log(`Booting iOS simulator: ${targetUdid}`);
+  execSync(`xcrun simctl boot ${targetUdid}`, { stdio: "ignore", timeout: 30_000 });
+  iosStartedByUs = true;
+  iosBootedUdid = targetUdid;
+
+  // Wait for simulator to be fully booted
+  const deadline = Date.now() + bootTimeout * 1000;
+  while (Date.now() < deadline) {
+    await sleep(3000);
+    if (isSimulatorBooted()) {
+      if (verbose) console.log("iOS simulator booted successfully");
+      // Open Simulator.app so Maestro can interact with it
+      try {
+        execSync("open -a Simulator", { stdio: "ignore", timeout: 5000 });
+      } catch { /* best effort */ }
+      await sleep(3000);
+      return;
+    }
+  }
+
+  throw new Error(`iOS simulator failed to boot within ${bootTimeout}s`);
+}
+
+/** Stop the iOS simulator if smoke-kit started it. */
+export function stopSimulator(verbose = false): void {
+  if (!iosStartedByUs) return;
+
+  if (verbose) console.log("Stopping iOS simulator...");
+
+  try {
+    if (iosBootedUdid) {
+      execSync(`xcrun simctl shutdown ${iosBootedUdid}`, { stdio: "ignore", timeout: 15_000 });
+    } else {
+      execSync("xcrun simctl shutdown booted", { stdio: "ignore", timeout: 15_000 });
+    }
+  } catch {
+    // Already shut down
+  }
+
+  iosStartedByUs = false;
+  iosBootedUdid = null;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { getRegistry, clearRegistry } from "./service-manager.js";
-import { stopEmulator, wasStartedByUs } from "./emulator-manager.js";
+import { stopEmulator, stopSimulator, wasStartedByUs } from "./emulator-manager.js";
 import { execSync } from "node:child_process";
 
 let cleanupRegistered = false;
@@ -65,8 +65,9 @@ export function killAllServices(): void {
 
   clearRegistry();
 
-  // Stop emulator if we started it
+  // Stop emulator/simulator if we started them
   if (wasStartedByUs()) {
     stopEmulator(verboseCleanup);
+    stopSimulator(verboseCleanup);
   }
 }
