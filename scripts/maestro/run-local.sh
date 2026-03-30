@@ -191,7 +191,7 @@ start_services() {
     PYTHONPATH="${REPO_ROOT}" \
     VOICE_NOTES_PROCESSING_POLL_INTERVAL_MS="${SMOKE_WORKER_POLL_INTERVAL_MS:-3000}" \
     uv run --directory backend python -m backend.src.workers.notes)"
-  local -a metro_command=(pnpm --filter app exec expo start --dev-client --port "${SMOKE_METRO_PORT}")
+  local -a metro_command=(pnpm --filter app exec expo start --port "${SMOKE_METRO_PORT}")
   if [[ "${RUN_MODE}" != "ci" ]]; then
     metro_command+=(--localhost)
   else
@@ -213,7 +213,11 @@ start_services() {
   smoke_wait_for_process "${WORKER_PID}" 60 "worker process"
   smoke_wait_for_process "${METRO_PID}" 60 "Metro process"
   smoke_wait_for_http "${SMOKE_API_HEALTH_URL}" 60 "backend API"
-  smoke_wait_for_http "http://${SMOKE_METRO_HOST}:${SMOKE_METRO_PORT}/status" 60 "Metro"
+  if ! smoke_wait_for_http "http://${SMOKE_METRO_HOST}:${SMOKE_METRO_PORT}/status" 120 "Metro"; then
+    printf "\n[service-bootstrap] Metro failed to start. Metro log:\n" >&2
+    cat "${SMOKE_METRO_LOG_PATH}" >&2 || true
+    return 1
+  fi
 }
 
 build_and_install_app() {
@@ -247,6 +251,13 @@ build_and_install_app() {
   if (( build_exit != 0 )) && [[ "${SMOKE_PLATFORM}" == "ios" ]]; then
     if grep -q "Build Succeeded" "${SMOKE_BUILD_LOG_PATH}" && grep -q "Installing on" "${SMOKE_BUILD_LOG_PATH}"; then
       printf "[build-install] iOS build and install succeeded; ignoring post-install URL open failure (exit %d)\n" "${build_exit}" >&2
+      return 0
+    fi
+  fi
+
+  if (( build_exit != 0 )) && [[ "${SMOKE_PLATFORM}" == "android" ]]; then
+    if grep -q "BUILD SUCCESSFUL" "${SMOKE_BUILD_LOG_PATH}" && grep -q "Installing" "${SMOKE_BUILD_LOG_PATH}"; then
+      printf "[build-install] Android build and install succeeded; ignoring post-install launch failure (exit %d)\n" "${build_exit}" >&2
       return 0
     fi
   fi

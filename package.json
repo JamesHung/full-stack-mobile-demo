@@ -14,6 +14,7 @@
     "chromatic": "corepack pnpm storybook:build && chromatic --project-token=$CHROMATIC_PROJECT_TOKEN --storybook-build-dir=storybook-static"
   },
   "devDependencies": {
+    "@voice-notes/smoke-kit": "workspace:*",
     "@storybook/react": "^8.6.11",
     "@storybook/react-webpack5": "^8.6.11",
     "@storybook/test": "8.6.18",

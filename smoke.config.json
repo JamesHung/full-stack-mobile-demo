@@ -1,0 +1,56 @@
+{
+  "version": "1.0",
+  "appId": "com.demo.voicenotes",
+  "appRoot": "app",
+  "backendRoot": "backend",
+  "platforms": ["android", "ios"],
+  "services": [
+    {
+      "name": "backend-api",
+      "command": "uv run --project backend uvicorn backend.src.main:app --host 0.0.0.0 --port 8000",
+      "port": 8000,
+      "healthPath": "/docs",
+      "healthTimeout": 60,
+      "retryInterval": 2,
+      "logFile": "backend-api.log"
+    },
+    {
+      "name": "backend-worker",
+      "command": "uv run --project backend python -m backend.src.workers.notes",
+      "logFile": "worker.log",
+      "env": {
+        "PYTHONPATH": ".",
+        "VOICE_NOTES_PROCESSING_POLL_INTERVAL_MS": "3000"
+      }
+    }
+  ],
+  "metro": {
+    "port": 8081,
+    "host": "127.0.0.1",
+    "healthPath": "/status",
+    "healthTimeout": 90,
+    "command": "pnpm --filter app exec expo start --port 8081",
+    "logFile": "metro.log"
+  },
+  "flows": {
+    "directory": ".maestro",
+    "androidFlow": "android-smoke.yaml",
+    "iosFlow": "ios-smoke.yaml",
+    "canonicalFlow": "canonical-flow.yaml"
+  },
+  "artifacts": {
+    "outputRoot": ".artifacts/maestro",
+    "junitFile": "results.xml",
+    "summaryFile": "summary.json"
+  },
+  "healthCheck": {
+    "timeout": 60,
+    "retryInterval": 2,
+    "httpMethod": "GET"
+  },
+  "emulator": {
+    "avd": "Medium_Phone_API_36.1",
+    "simulatorUdid": "FB7ECC47-CBDD-44D9-AD51-3CD406C09F81",
+    "bootTimeout": 120
+  }
+}

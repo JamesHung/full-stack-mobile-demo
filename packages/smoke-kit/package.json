@@ -1,0 +1,26 @@
+{
+  "name": "@voice-notes/smoke-kit",
+  "version": "0.1.0",
+  "description": "Portable mobile smoke test kit for Expo / React Native + Node/Python backends",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "smoke-kit": "./bin/smoke-kit.mjs"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "commander": "^13.1.0",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2",
+    "@types/node": "^22.0.0",
+    "vitest": "^3.0.8"
+  }
+}

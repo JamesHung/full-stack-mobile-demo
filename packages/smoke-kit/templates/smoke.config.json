@@ -1,0 +1,40 @@
+{
+  "version": "1.0",
+  "appId": "{{APP_ID}}",
+  "appRoot": "{{APP_ROOT}}",
+  "backendRoot": "{{BACKEND_ROOT}}",
+  "platforms": ["android", "ios"],
+  "services": [
+    {
+      "name": "backend-api",
+      "command": "uv run --project {{BACKEND_ROOT}} uvicorn {{BACKEND_ROOT}}.src.main:app --host 0.0.0.0 --port {{API_PORT}}",
+      "port": {{API_PORT}},
+      "healthPath": "/docs",
+      "healthTimeout": 60,
+      "retryInterval": 2,
+      "logFile": "backend-api.log"
+    }
+  ],
+  "metro": {
+    "port": {{METRO_PORT}},
+    "host": "127.0.0.1",
+    "healthPath": "/status",
+    "healthTimeout": 60
+  },
+  "flows": {
+    "directory": ".maestro",
+    "androidFlow": "android-smoke.yaml",
+    "iosFlow": "ios-smoke.yaml",
+    "canonicalFlow": "canonical-flow.yaml"
+  },
+  "artifacts": {
+    "outputRoot": ".artifacts/maestro",
+    "junitFile": "results.xml",
+    "summaryFile": "summary.json"
+  },
+  "healthCheck": {
+    "timeout": 60,
+    "retryInterval": 2,
+    "httpMethod": "GET"
+  }
+}

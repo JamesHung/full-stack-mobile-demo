@@ -1,0 +1,18 @@
+# Canonical Smoke Test Flow
+# Replace the steps below with your app-specific smoke test journey.
+
+appId: {{APP_ID}}
+---
+- launchApp
+
+# Wait for the app to load
+- waitForAnimationToEnd:
+    timeout: 30000
+
+# TODO: Add your smoke test steps here.
+# Example:
+# - assertVisible:
+#     text: "Welcome"
+#     timeout: 10000
+# - tapOn: "Sign In"
+# - inputText: "test@example.com"
