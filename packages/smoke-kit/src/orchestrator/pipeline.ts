@@ -197,7 +197,7 @@ export async function executePipeline(
 
       // Start Metro bundler
       const metroCommand = opts.config.metro.command
-        ?? `pnpm --filter ${opts.config.appRoot} exec expo start --dev-client --port ${opts.config.metro.port}`;
+        ?? `pnpm --filter ${opts.config.appRoot} exec expo start --port ${opts.config.metro.port}`;
       const metroLogFile = join(logsDir, opts.config.metro.logFile ?? "metro.log");
 
       const backendPort = opts.config.services[0]?.port ?? 8000;
