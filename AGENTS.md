@@ -31,7 +31,7 @@
 
 - 預設執行順序：`lint` → `test` → `build`。
 - **單檔或小範圍修改**：跑最相關的 lint、test。
-- **共用元件、基礎設施、相依性或跨模組修改**：局部驗證外，也要跑完整 build + test。
+- **功能實作、重構或跨模組修改**：除了局部驗證，**必須**使用 `@voice-notes/smoke-kit` 執行完整鏈條驗證。優先使用 `pnpm --filter smoke-kit exec smoke-kit run <platform>`，確保 Backend API、Worker 與 App 之間的整合正常。
 - 完成任何實作類變更前，必須執行可用的 regression test suite；若無明確 regression suite，以 lint、test、build 中與改動最相關者作為最低要求。
 - 若無可執行測試入口，必須明確說明缺口與略過原因。
 - 回報結果時，需清楚列出實際執行的命令，以及成功、失敗、略過的原因。
