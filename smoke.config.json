@@ -20,7 +20,8 @@
       "logFile": "worker.log",
       "env": {
         "PYTHONPATH": ".",
-        "VOICE_NOTES_PROCESSING_POLL_INTERVAL_MS": "3000"
+        "VOICE_NOTES_PROCESSING_POLL_INTERVAL_MS": "3000",
+        "VOICE_NOTES_PROCESSING_DELAY_MS": "5000"
       }
     }
   ],
