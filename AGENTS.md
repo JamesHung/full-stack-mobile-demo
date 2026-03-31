@@ -31,10 +31,43 @@
 
 - 預設執行順序：`lint` → `test` → `build`。
 - **單檔或小範圍修改**：跑最相關的 lint、test。
-- **功能實作、重構或跨模組修改**：除了局部驗證，**必須**使用 `@voice-notes/smoke-kit` 執行完整鏈條驗證。優先使用 `pnpm --filter smoke-kit exec smoke-kit run <platform>`，確保 Backend API、Worker 與 App 之間的整合正常。
+- **功能實作、重構或跨模組修改**：必須執行 `make verify`。
 - 完成任何實作類變更前，必須執行可用的 regression test suite；若無明確 regression suite，以 lint、test、build 中與改動最相關者作為最低要求。
 - 若無可執行測試入口，必須明確說明缺口與略過原因。
 - 回報結果時，需清楚列出實際執行的命令，以及成功、失敗、略過的原因。
+
+### 品質硬需求（Codex / Copilot / Gemini 一律適用）
+
+- 品質**不得**依賴 agent 自律或人工記憶；必須依賴 repo 內的 hook、`make verify`、`make doctor`、`make enforce` 與 CI gate。
+- 修改下列任何檔案或目錄時，提交前**必須**執行 `make verify`：
+  - `app/**`
+  - `backend/**`
+  - `packages/smoke-kit/**`
+  - `scripts/maestro/**`
+  - `.maestro/**`
+  - `smoke.config.json`
+  - `smoke-plan.yml`
+  - `Makefile`
+  - `.github/workflows/**`
+- 修改下列 smoke 相關 surface 時，提交前**必須**執行 `make doctor` 確認工具鏈完整：
+  - `packages/smoke-kit/**`
+  - `scripts/maestro/**`
+  - `smoke.config.json`
+  - `smoke-plan.yml`
+- 新增或修改 Makefile target 時，提交前**必須**實際執行該 target 並確認輸出符合預期；不得只寫 target 就 commit。
+- `git commit --no-verify` 只可作為工具故障時的暫時逃生口，不得當成日常流程；若使用，合併前**必須**補跑完整檢查並把原因記錄到 `issuelog/`。
+- 任何 agent 在 `make verify` 或 CI gate 未通過前，**不得**宣稱變更已完成、可安全合併、或品質已受保證。
+
+### smoke-kit 工具
+
+- smoke-kit 是一個 TypeScript CLI 工具（位於 `packages/smoke-kit/`），用於自動化 smoke test 與 CI guardrails。
+- 支援的命令：`run`、`preflight`、`plan`、`enforce`、`install-hook`、`doctor`。
+- `run <platform>` 會依序：啟動 backend → 等待 health check → 啟動 Metro → 啟動 emulator → 執行 Maestro flow → 收集結果。
+- `plan` 會根據 `smoke-plan.yml` 分析 git diff，決定哪些檢查需要執行。
+- `enforce` 是 policy coordinator：plan → validate → 平行執行 lint/shell-validation → 依序執行 smoke tests → 記錄 metrics。
+- `doctor` 會檢查 Node.js、pnpm、uv、Maestro、emulator、smoke.config.json、smoke-plan.yml 等工具鏈是否完整。
+- `smoke.config.json` 是 smoke-kit 的宣告式設定，包含 service 啟動、flow 路徑、artifact 輸出等，修改前應先閱讀其結構。
+- 詳細使用說明見 [ci-guardrails][ci-guardrails]。
 
 ### CLI Flag 與依賴驗證
 
@@ -46,6 +79,10 @@
 - 修改 `.sh` 檔案後，commit 前**必須**執行 `bash -n <file>` 驗證語法正確。
 - 涉及 `if/fi`、`case/esac`、`while/done` 等巢狀結構修改時，額外檢查配對完整性。
 - 若同時修改多個 `.sh` 檔案，可使用 `find scripts/ -name '*.sh' -exec bash -n {} \;` 批次驗證。
+- 確認腳本中引用的路徑變數（如 `$ROOT_DIR`、`$ARTIFACT_DIR`）有 `:-` 預設值或錯誤提示。
+- 確認 `set -euo pipefail` 位於腳本頂部（第一或第二行）。
+- 啟動背景程序的腳本必須包含 `trap cleanup EXIT`。
+- 違反此規則會浪費至少一個完整的 CI 輪次（Android 45 分鐘 + iOS 60 分鐘）。
 
 ### Expo / EAS 特殊規則
 
@@ -161,6 +198,11 @@
 - [ ] 是否需要補測試、文件、註解、migration 或 release note
 - [ ] 是否有安全性、權限、機敏資訊或輸入驗證風險
 - [ ] Markdown 連結、範例指令是否符合本檔規範
+- [ ] Maestro flow 文案是否與 React Native UI 一致
+- [ ] Shell 腳本是否通過 `bash -n` 驗證
+- [ ] CI 設定檔改動是否已驗證 YAML 語法
+- [ ] smoke.config.json 與 smoke-plan.yml 是否與實際檔案結構一致
+- [ ] 新增或修改的 Makefile target 是否已實際執行驗證
 
 若有未完成驗證、已知風險或無法在本次處理的事項，**必須明確揭露，不可省略**。
 
@@ -194,3 +236,4 @@
 
 [issuelog]: ./issuelog/
 [changelog]: ./AGENTS_CHANGELOG.md
+[ci-guardrails]: ./docs/ci-guardrails.md

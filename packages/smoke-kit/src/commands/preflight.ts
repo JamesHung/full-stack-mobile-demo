@@ -1,10 +1,9 @@
 import { resolve, join } from "node:path";
 import { existsSync } from "node:fs";
 import { execSync } from "node:child_process";
-import { loadConfig } from "../config/loader.js";
 import { ExitCode } from "../utils/exit-codes.js";
 import type { Platform } from "../utils/platform.js";
-import { isPlatform } from "../utils/platform.js";
+import { loadConfigOrExit, validatePlatformOrExit } from "./helpers.js";
 
 interface PreflightOptions {
   platform: string;
@@ -20,20 +19,8 @@ interface CheckResult {
 }
 
 export async function preflightCommand(opts: PreflightOptions): Promise<void> {
-  const platform = opts.platform;
-  if (!isPlatform(platform)) {
-    console.error(`Invalid platform: ${platform}. Must be "android" or "ios".`);
-    process.exit(ExitCode.PREFLIGHT_FAILURE);
-  }
-
-  let config;
-  try {
-    const result = await loadConfig(opts.config);
-    config = result.config;
-  } catch (err) {
-    console.error(String(err instanceof Error ? err.message : err));
-    process.exit(ExitCode.CONFIG_ERROR);
-  }
+  const platform = validatePlatformOrExit(opts.platform);
+  const config = await loadConfigOrExit(opts.config);
 
   const checks: CheckResult[] = [];
 

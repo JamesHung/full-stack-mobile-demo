@@ -1,7 +1,6 @@
-import { loadConfig } from "../config/loader.js";
 import { ExitCode } from "../utils/exit-codes.js";
-import { isPlatform } from "../utils/platform.js";
 import { executePipeline } from "../orchestrator/pipeline.js";
+import { loadConfigOrExit, validatePlatformOrExit } from "./helpers.js";
 
 interface RunOptions {
   config?: string;
@@ -18,19 +17,8 @@ export async function runCommand(
   platform: string,
   opts: RunOptions,
 ): Promise<void> {
-  if (!isPlatform(platform)) {
-    console.error(`Invalid platform: ${platform}. Must be "android" or "ios".`);
-    process.exit(ExitCode.GENERAL_ERROR);
-  }
-
-  let config;
-  try {
-    const result = await loadConfig(opts.config);
-    config = result.config;
-  } catch (err) {
-    console.error(String(err instanceof Error ? err.message : err));
-    process.exit(ExitCode.CONFIG_ERROR);
-  }
+  const validPlatform = validatePlatformOrExit(platform);
+  const config = await loadConfigOrExit(opts.config);
 
   const mode: "local" | "ci" =
     opts.mode === "ci" || opts.mode === "local"
@@ -41,7 +29,7 @@ export async function runCommand(
 
   const exitCode = await executePipeline({
     config,
-    platform,
+    platform: validPlatform,
     mode,
     runId: opts.runId,
     skipPreflight: opts.skipPreflight,

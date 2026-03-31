@@ -82,4 +82,45 @@ program
     await runCommand(platform, opts);
   });
 
+program
+  .command("plan")
+  .description("Show which checks would run for the current diff")
+  .option("--plan-file <path>", "Path to smoke-plan.yml")
+  .option("--json", "Output as JSON")
+  .option("--last-run", "Include last enforcement run status")
+  .option("--verbose", "Show detailed output")
+  .option("--mode <mode>", "Diff source: ci | local (auto-detected if omitted)")
+  .action(async (opts) => {
+    const { planCommand } = await import("./commands/plan.js");
+    await planCommand(opts);
+  });
+
+program
+  .command("enforce")
+  .description("Run all required checks for the current diff (fail-closed)")
+  .option("--plan-file <path>", "Path to smoke-plan.yml")
+  .option("--verbose", "Show detailed output")
+  .option("--mode <mode>", "Diff source: ci | local (auto-detected if omitted)")
+  .action(async (opts) => {
+    const { enforceCommand } = await import("./commands/enforce.js");
+    await enforceCommand(opts);
+  });
+
+program
+  .command("install-hook")
+  .description("Install pre-push git hook for automatic enforcement")
+  .option("--force", "Overwrite existing pre-push hook")
+  .action(async (opts) => {
+    const { installHookCommand } = await import("./commands/install-hook.js");
+    await installHookCommand(opts);
+  });
+
+program
+  .command("doctor")
+  .description("Diagnose environment and configuration issues")
+  .action(async () => {
+    const { doctorCommand } = await import("./commands/doctor.js");
+    await doctorCommand();
+  });
+
 program.parse();
