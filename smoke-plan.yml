@@ -1,0 +1,33 @@
+version: 1
+
+checks:
+  backend-lint:
+    command: "pnpm --filter backend run lint"
+    timeout_s: 60
+
+  ios-smoke:
+    command: "pnpm --filter smoke-kit exec smoke-kit run ios"
+    timeout_s: 300
+
+  android-smoke:
+    command: "pnpm --filter smoke-kit exec smoke-kit run android"
+    timeout_s: 300
+
+  shell-validation:
+    command: "find scripts/ -name '*.sh' -exec bash -n {} \\;"
+    timeout_s: 30
+
+rules:
+  - paths: ["app/**", "backend/**", "scripts/**"]
+    checks: [backend-lint, ios-smoke, android-smoke, shell-validation]
+
+  - paths: [".github/workflows/**", "android/fastlane/**"]
+    checks: [backend-lint, ios-smoke, android-smoke, shell-validation]
+
+  - paths: ["packages/smoke-kit/**"]
+    checks: [backend-lint, shell-validation]
+
+  - paths: ["smoke-plan.yml", "package.json", "pnpm-lock.yaml", "tsconfig.base.json"]
+    checks: [backend-lint, ios-smoke, android-smoke]
+
+ci_average_duration_s: 720

@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     database_path: str = str(ROOT_DIR / "backend" / "voice_notes.db")
     audio_storage_dir: str = str(ROOT_DIR / "backend" / "storage")
     processing_poll_interval_ms: int = 250
+    processing_delay_ms: int = 0
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="VOICE_NOTES_")
 

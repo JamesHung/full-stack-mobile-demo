@@ -43,3 +43,6 @@ android/settings.gradle
 android/.env.local
 android/fastlane/report.xml
 .github/agents/copilot-instructions.md
+
+# smoke-kit local data
+.smoke-kit/

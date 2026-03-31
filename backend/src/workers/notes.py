@@ -7,6 +7,7 @@ from backend.src.workers.state_transitions import complete_processing, transitio
 
 
 def process_next_job() -> bool:
+    settings = get_settings()
     with session() as connection:
         job = connection.execute(
             """
@@ -23,6 +24,10 @@ def process_next_job() -> bool:
             return False
 
         transition_job_to_running(connection, job["id"], job["note_id"])
+
+        if settings.processing_delay_ms > 0:
+            time.sleep(settings.processing_delay_ms / 1000)
+
         should_fail = "fail" in (job["title"] or "").lower()
         complete_processing(
             connection,

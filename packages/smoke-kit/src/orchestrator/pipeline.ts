@@ -53,7 +53,7 @@ export async function executePipeline(
 
   const stages: StageResult[] = [];
   const startedAt = new Date().toISOString();
-  let finalExitCode = ExitCode.SUCCESS;
+  let finalExitCode: ExitCode = ExitCode.SUCCESS;
 
   const runStage = async (
     name: string,

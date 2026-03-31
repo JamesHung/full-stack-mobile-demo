@@ -1,7 +1,7 @@
 PNPM ?= corepack pnpm
 UV ?= uv
 
-.PHONY: install backend-sync lint test build verify api worker app regression backend-regression maestro-android-local maestro-ios-local android-apk
+.PHONY: install backend-sync lint test build verify api worker app regression backend-regression maestro-android-local maestro-ios-local android-apk plan enforce install-hook doctor smoke-android smoke-ios
 
 install:
 	$(PNPM) install
@@ -51,3 +51,23 @@ android-apk:
 		KEY_ALIAS=$(KEY_ALIAS) \
 		KEY_PASSWORD=$(KEY_PASSWORD) \
 		bundle exec fastlane android build_and_export_apk
+
+# ── CI Guardrails (smoke-kit policy engine) ──
+
+plan:
+	npx --prefix packages/smoke-kit smoke-kit plan --verbose
+
+enforce:
+	npx --prefix packages/smoke-kit smoke-kit enforce --verbose
+
+install-hook:
+	npx --prefix packages/smoke-kit smoke-kit install-hook
+
+doctor:
+	npx --prefix packages/smoke-kit smoke-kit doctor
+
+smoke-android:
+	npx --prefix packages/smoke-kit smoke-kit run android --verbose
+
+smoke-ios:
+	npx --prefix packages/smoke-kit smoke-kit run ios --verbose
